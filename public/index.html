@@ -3,7 +3,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <link rel="manifest" href="/manifest.json">
-<title>同報PWA</title>
+<title>通知PWA</title>
 <style>
   body{font-family:system-ui, sans-serif;max-width:640px;margin:24px auto;padding:0 12px}
   input,textarea,button{font:inherit;padding:8px;border-radius:8px;border:1px solid #ccc}
@@ -12,7 +12,7 @@
   .grow{flex:1}
 </style>
 <body>
-<h1 style="font-weight:600">同報PWA</h1>
+<h1 style="font-weight:600">通知PWA</h1>
 
 <div class="row">
   <input id="code" class="grow" placeholder="共有コード">
@@ -38,8 +38,8 @@ const log = (...a)=>{ const p=document.getElementById('log'); p.textContent += a
   log('SW登録OK');
 
   // 通知許可
-  const perm = await Notification.requestPermission();
-  if (perm !== 'granted') { log('通知が許可されていません'); return; }
+  //const perm = await Notification.requestPermission();
+  //if (perm !== 'granted') { log('通知が許可されていません'); return; }
 
   const VAPID_PUBLIC_KEY = 'BC0hpA2FwuxcDIq2FdXUXtbUmE4cb_Nq6QV4eKmq9IVKIR9mD3t_-8cXcerokdD1-NljW7l9Z1X0MgA-lqM3e2Q'; //
 
@@ -53,19 +53,28 @@ const log = (...a)=>{ const p=document.getElementById('log'); p.textContent += a
   };
 
   async function getSub(){
-    let sub = await reg.pushManager.getSubscription();
-    if (!sub) {
-      sub = await reg.pushManager.subscribe({
-        userVisibleOnly: true,
-        applicationServerKey: keyToUint8(VAPID_PUBLIC_KEY)
-      });
-    }
-    return sub;
+  //  let sub = await reg.pushManager.getSubscription();
+  //  if (!sub) {
+  //    sub = await reg.pushManager.subscribe({
+  //      userVisibleOnly: true,
+  //      applicationServerKey: keyToUint8(VAPID_PUBLIC_KEY)
+  //    });
+  //  }
+  //  return sub;
+     const existing = await reg.pushManager.getSubscription();
+     if (existing) return existing;
+     return reg.pushManager.subscribe({
+       userVisibleOnly: true,
+       applicationServerKey: keyToUint8(VAPID_PUBLIC_KEY)
+     });
   }
 
   document.getElementById('btn-sub').onclick = async () => {
     const code = document.getElementById('code').value.trim();
     if (!code) return alert('コードを入力');
+    // ここで初めて許可をリクエスト（ユーザー操作の直後）
+    const perm = await Notification.requestPermission();
+    if (perm !== 'granted') { log('通知が許可されませんでした'); return; }
     const sub = await getSub();
     const r = await fetch('/api/subscribe', {
       method:'POST',headers:{'Content-Type':'application/json'},
