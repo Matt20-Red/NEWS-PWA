@@ -1,18 +1,15 @@
 {
-  "name": "family-broadcast-pwa",
+  "name": "NEWS-PWA",
   "version": "0.1.0",
   "private": true,
   "type": "module",
   "dependencies": {
-    "web-push": "^3.6.6"
+    "web-push": "^3.6.6",
+    "@upstash/redis": "^1.28.4"   // ← ★これを追加
   },
   "scripts": {
     "dev": "vercel dev",
     "build": "echo \"no build\"",
     "start": "vercel dev"
-  },
-  "dependencies": {
-  "web-push": "^3.6.6",
-  "@vercel/kv": "^1.0.0"
   }
 }
