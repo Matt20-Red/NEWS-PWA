@@ -41,8 +41,7 @@ const log = (...a)=>{ const p=document.getElementById('log'); p.textContent += a
   const perm = await Notification.requestPermission();
   if (perm !== 'granted') { log('通知が許可されていません'); return; }
 
-  // VAPID公開鍵（Base64URL）を .env から埋め込む方式
-  const VAPID_PUBLIC_KEY = '%VAPID_PUBLIC_KEY%'; // 後で置換（vercel環境変数でrewrite可）
+  const VAPID_PUBLIC_KEY = 'BC0hpA2FwuxcDIq2FdXUXtbUmE4cb_Nq6QV4eKmq9IVKIR9mD3t_-8cXcerokdD1-NljW7l9Z1X0MgA-lqM3e2Q'; //
 
   const keyToUint8 = (base64url) => {
     const padding = '='.repeat((4 - base64url.length % 4) % 4);
