@@ -1,0 +1,22 @@
+<!doctype html>
+<html lang="ja">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Note</title>
+<style>body{font-family:system-ui,sans-serif;max-width:640px;margin:24px auto;padding:0 12px}</style>
+<body>
+<pre id="view">読み込み中…</pre>
+<script>
+  const h = decodeURIComponent(location.hash||'');
+  const m = h.startsWith('#msg=') ? h.slice(5) : '';
+  const el = document.getElementById('view');
+  if (m) {
+    el.textContent = m;
+    // 履歴から本文を消す（⑦要件）
+    history.replaceState(null, '', '/note');
+  } else {
+    el.textContent = 'メッセージは見つかりませんでした';
+  }
+</script>
+</body>
+</html>
