@@ -1,0 +1,109 @@
+<!doctype html>
+<html lang="ja">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<link rel="manifest" href="/manifest.json">
+<title>同報PWA</title>
+<style>
+  body{font-family:system-ui, sans-serif;max-width:640px;margin:24px auto;padding:0 12px}
+  input,textarea,button{font:inherit;padding:8px;border-radius:8px;border:1px solid #ccc}
+  textarea{width:100%;height:100px}
+  .row{display:flex;gap:8px;margin:8px 0}
+  .grow{flex:1}
+</style>
+<body>
+<h1 style="font-weight:600">同報PWA</h1>
+
+<div class="row">
+  <input id="code" class="grow" placeholder="共有コード">
+  <button id="btn-sub">購読</button>
+  <button id="btn-unsub">購読解除</button>
+</div>
+
+<textarea id="message" placeholder="メッセージ"></textarea>
+<div class="row">
+  <button id="btn-send" class="grow">送信</button>
+</div>
+
+<pre id="log"></pre>
+
+<script>
+const log = (...a)=>{ const p=document.getElementById('log'); p.textContent += a.join(' ') + '\n'; }
+
+(async function main(){
+  if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
+    log('このブラウザはPush非対応です'); return;
+  }
+  const reg = await navigator.serviceWorker.register('/sw.js');
+  log('SW登録OK');
+
+  // 通知許可
+  const perm = await Notification.requestPermission();
+  if (perm !== 'granted') { log('通知が許可されていません'); return; }
+
+  // VAPID公開鍵（Base64URL）を .env から埋め込む方式
+  const VAPID_PUBLIC_KEY = '%VAPID_PUBLIC_KEY%'; // 後で置換（vercel環境変数でrewrite可）
+
+  const keyToUint8 = (base64url) => {
+    const padding = '='.repeat((4 - base64url.length % 4) % 4);
+    const base64 = (base64url + padding).replace(/-/g,'+').replace(/_/g,'/');
+    const raw = atob(base64);
+    const out = new Uint8Array(raw.length);
+    for (let i=0;i<raw.length;i++) out[i] = raw.charCodeAt(i);
+    return out;
+  };
+
+  async function getSub(){
+    let sub = await reg.pushManager.getSubscription();
+    if (!sub) {
+      sub = await reg.pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey: keyToUint8(VAPID_PUBLIC_KEY)
+      });
+    }
+    return sub;
+  }
+
+  document.getElementById('btn-sub').onclick = async () => {
+    const code = document.getElementById('code').value.trim();
+    if (!code) return alert('コードを入力');
+    const sub = await getSub();
+    const r = await fetch('/api/subscribe', {
+      method:'POST',headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ code, subscription: sub })
+    });
+    const j = await r.json();
+    log('購読OK', JSON.stringify(j));
+  };
+
+  document.getElementById('btn-unsub').onclick = async () => {
+    const code = document.getElementById('code').value.trim();
+    if (!code) return alert('コードを入力');
+    const sub = await reg.pushManager.getSubscription();
+    if (!sub) return log('未購読です');
+    // 端末側で購読解除
+    await sub.unsubscribe().catch(()=>{});
+    // サーバー側からも解除（③要件）
+    const r = await fetch('/api/unsubscribe', {
+      method:'POST',headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ code, endpoint: sub.endpoint })
+    });
+    const j = await r.json();
+    log('購読解除', JSON.stringify(j));
+  };
+
+  document.getElementById('btn-send').onclick = async () => {
+    const code = document.getElementById('code').value.trim();
+    const message = document.getElementById('message').value;
+    if (!code || !message) return alert('コードとメッセージを入力');
+    const r = await fetch('/api/broadcast', {
+      method:'POST',headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ code, message })
+    });
+    const j = await r.json();
+    log('送信', JSON.stringify(j));
+  };
+})();
+</script>
+</body>
+</html>
