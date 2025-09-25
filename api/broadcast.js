@@ -13,6 +13,7 @@ export default async function handler(req, res) {
   const subs = list(code).slice();
 
   let attempted = 0, accepted = 0, expired = 0, retry = 0;
+  const errors = []; // ← 追加：エラー記録
   for (const sub of subs) {
     attempted++;
     try {
@@ -25,6 +26,7 @@ export default async function handler(req, res) {
       } else if (msg.includes('429') || msg.includes('5')) {
         retry++;
       }
+      errors.push({ endpoint: sub.endpoint, error: msg.slice(0, 300) }); // ← 追記
     }
   }
   const remaining = count(code);
@@ -38,5 +40,6 @@ export default async function handler(req, res) {
     try { await webpush.sendNotification(sub, JSON.stringify(report)); } catch {}
   }
 
-  return res.json({ ok:true, attempted, accepted, expired, retry, remaining });
+  //return res.json({ ok:true, attempted, accepted, expired, retry, remaining });
+  return res.json({ ok:true, attempted, accepted, expired, retry, remaining, errors });
 }
