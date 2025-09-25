@@ -1,0 +1,7 @@
+{
+  "name": "同報PWA",
+  "short_name": "同報",
+  "start_url": "/index.html",
+  "display": "standalone",
+  "icons": []
+}
