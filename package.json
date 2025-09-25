@@ -10,5 +10,9 @@
     "dev": "vercel dev",
     "build": "echo \"no build\"",
     "start": "vercel dev"
+  },
+  "dependencies": {
+  "web-push": "^3.6.6",
+  "@vercel/kv": "^1.0.0"
   }
 }
