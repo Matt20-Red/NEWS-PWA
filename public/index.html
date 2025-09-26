@@ -55,7 +55,7 @@ const log = (...a)=>{ const p=document.getElementById('log'); p.textContent += a
   const reg = await navigator.serviceWorker.ready;
   log('SW ready');
 
-  const VAPID_PUBLIC_KEY = 'BC0hpA2FwuxcDIq2FdXUXtbUmE4cb_Nq6QV4eKmq9IVKIR9mD3t_-8cXcerokdD1-NljW7l9Z1X0MgA-lqM3e2Q';
+  const VAPID_PUBLIC_KEY = 'BAV2ymIPqjBiWKHBUuklJIrJhr-Yk-8AXEzZp6RfbANML4W9XdQ4aqz-ZerM49qHvRn5l0VFUsVSXucnaQsTppI';
 
   const keyToUint8 = (base64url) => {
     const padding = '='.repeat((4 - base64url.length % 4) % 4);
