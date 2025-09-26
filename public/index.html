@@ -109,7 +109,11 @@ const log = (...a)=>{ const p=document.getElementById('log'); p.textContent += a
       body: JSON.stringify({ code, message })
     });
     const j = await r.json();
-    log('送信', JSON.stringify(j));
+    // log('送信', JSON.stringify(j));
+    log('送信結果', JSON.stringify(j));             // ← 返り値をそのまま表示
+    if (j.errors && j.errors.length) {               // ← エラーの先頭だけ見やすく
+      log('エラー例:', j.errors[0].error);
+    }
   };
 })();
 </script>
