@@ -43,37 +43,48 @@ self.addEventListener('push', (event) => {
 self.addEventListener('notificationclick', (event) => {
   event.notification.close();
   const u = event.notification.data?.url || '/';
-  const abs = new URL(u, self.location.origin).href;
+  const absUrl = new URL(u, self.location.origin);
+
+  // ★ 同一URL判定を回避するため、毎回ユニークな ts を付与
+  try { absUrl.searchParams.set('ts', String(Date.now())); } catch {}
 
   event.waitUntil((async () => {
-    // ★ 追加: BroadcastChannel でも橋渡し（届く経路を増やす）
+    // ★ デバッグ：クリックが発火したことをページに知らせる
+    try {
+      const all0 = await self.clients.matchAll({ includeUncontrolled: true, type: 'window' });
+      for (const c of all0) c.postMessage({ __debug: 'notification-click', target: absUrl.href });
+    } catch {}
+
+    // ★ 二系統の橋渡し手段を準備
     let bc = null;
     try { bc = new BroadcastChannel('sw-bridge'); } catch {}
 
-    // 1) 既存ウィンドウがあれば → focus → navigate を試みる
+    // 1) 既存ウィンドウがあれば → focus → navigate を試みつつ、同時に二系統で“開け”シグナルを先に送る
     const all = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
     for (const c of all) {
       if (c.url && new URL(c.url).origin === self.location.origin) {
+        // 先にページへ合図（postMessage / BroadcastChannel 両方）
+        try { c.postMessage({ __open: absUrl.href }); } catch {}
+        try { bc && bc.postMessage({ __open: absUrl.href }); } catch {}
+
+        // 前面化 → navigate（iOS 26 での競合を避けるため順序をこの形に）
         try { await c.focus(); } catch {}
         try {
           if ('navigate' in c && typeof c.navigate === 'function') {
-            await c.navigate(abs);
-            // 併せて二系統で「開け」シグナルを送る（念のため）
-            try { c.postMessage({ __open: abs }); } catch {}
-            try { bc && bc.postMessage({ __open: abs }); } catch {}
-            return;
+            await c.navigate(absUrl.href);
+            return; // ここで成功したら完了
           }
         } catch {}
 
-        // 2) navigate が効かない系 → ページ側に任せる（二系統）
-        try { c.postMessage({ __open: abs }); } catch {}
-        try { bc && bc.postMessage({ __open: abs }); } catch {}
+        // navigate に失敗しても、合図は既に送ってあるので return
         return;
       }
     }
 
-    // 3) 既存ウィンドウがなければ新規に開く（最終手段）
-    try { await self.clients.openWindow(abs); } catch {}
+    // 2) 既存ウィンドウが無ければ、新規ウィンドウを開く（最終手段）
+    try { await self.clients.openWindow(absUrl.href); } catch {}
   })());
 });
+
+
   
