@@ -129,18 +129,29 @@ const log = (...a)=>{ const p=document.getElementById('log'); p.textContent += a
 
   document.getElementById('btn-send').onclick = async () => {
     try {
+      log('send click: handler start');  // ← クリック開始ログ
       const code = document.getElementById('code').value.trim();
       const message = document.getElementById('message').value;
-      if (!code || !message) return alert('コードとメッセージを入力');
-
+      // if (!code || !message) return alert('コードとメッセージを入力');
+      if (!code) { log('send stop: code empty'); alert('コードを入力'); return; }
+      if (!message) { log('send stop: message empty'); alert('メッセージを入力'); return; }
+      
       const r = await fetch('/api/broadcast', {
         method:'POST',headers:{'Content-Type':'application/json'},
         body: JSON.stringify({ code, message })
       });
       log('broadcast status:', r.status);
-      const j = await r.json();
+      // const j = await r.json();
+      // log('送信結果:', JSON.stringify(j));
+      // if (j.errors && j.errors.length) { log('エラー例:', j.errors[0].error); }
+      if (!r.ok) {
+        const t = await r.text();
+        log('broadcast error body:', t.slice(0,400));
+        return;
+      }
+      const j = await r.json().catch(e => ({ parseError: String(e) }));
       log('送信結果:', JSON.stringify(j));
-      if (j.errors && j.errors.length) { log('エラー例:', j.errors[0].error); }
+      if (j?.errors?.length) { log('エラー例:', j.errors[0].error); }
     } catch (e) {
       log('送信時エラー:', e?.message || e);
     }
