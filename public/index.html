@@ -24,7 +24,10 @@
 <div class="row">
   <button id="btn-send" class="grow">送信</button>
 </div>
-
+  
+<!-- ★ここに追加 -->
+<button id="btn-local">ローカル通知テスト</button>
+  
 <pre id="log"></pre>
 
 <script>
@@ -156,6 +159,18 @@ const log = (...a)=>{ const p=document.getElementById('log'); p.textContent += a
       log('送信時エラー:', e?.message || e);
     }
   };
+
+  document.getElementById('btn-local').onclick = async () => {
+    const reg = await navigator.serviceWorker.ready;
+    await reg.showNotification('通知(ローカル)', {
+      body: 'SW.showNotification からのテスト',
+      icon: '/icon-192.png',   // 必要なら manifest のアイコンに合わせる
+      badge: '/icon-192.png',
+      data: { url: '/' },
+    });
+    log('local notification requested');
+  };
+  
 })();
   <script>
   if (navigator.serviceWorker) {
