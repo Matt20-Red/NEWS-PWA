@@ -5,7 +5,7 @@ const { VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY, VAPID_SUBJECT } = process.env;
 
 try {
   webpush.setVapidDetails(
-    VAPID_SUBJECT || 'mailto:you@example.com',
+    VAPID_SUBJECT || 'beams-gumtree2@icloud.com',
     VAPID_PUBLIC_KEY,
     VAPID_PRIVATE_KEY
   );
