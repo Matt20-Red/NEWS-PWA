@@ -12,7 +12,8 @@ export default async function handler(req, res) {
     //   title: '通知',
     //   body: message || 'テスト',
     //   url: `/note#msg=${encodeURIComponent(message || 'テスト')}`
-    const url = `/note.html?ts=${Date.now()}#msg=${encodeURIComponent(message || 'テスト')}`;
+    // const url = `/note.html?ts=${Date.now()}#msg=${encodeURIComponent(message || 'テスト')}`;
+    const url = `/note.html?ts=${Date.now()}&m=${encodeURIComponent(message || 'テスト')}`;
     const payload = JSON.stringify({
       title: '通知',
       body: message || 'テスト',
