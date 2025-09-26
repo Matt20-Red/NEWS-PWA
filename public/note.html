@@ -21,17 +21,25 @@
   <script>
     (function () {
       // 例: /note#msg=こんにちは
-      const h = location.hash || '';
-      let text = '';
-      const m = h.match(/^#msg=(.*)$/);
-      if (m) {
-        try { text = decodeURIComponent(m[1]); } catch { text = m[1]; }
-      }
+      // const h = location.hash || '';
+      // let text = '';
+      // const m = h.match(/^#msg=(.*)$/);
+      // if (m) {
+      //   try { text = decodeURIComponent(m[1]); } catch { text = m[1]; }
+      // }
       // XSS防止のため textContent で反映
-      document.getElementById('msg').textContent = text || '(メッセージなし)';
+      // document.getElementById('msg').textContent = text || '(メッセージなし)';
       // 履歴に本文を残さない
       // if (location.hash) history.replaceState(null, '', '/note');
-      if (location.hash) history.replaceState(null, '', '/note.html');
+      // if (location.hash) history.replaceState(null, '', '/note.html');
+      
+      // 例: /note.html?ts=...&m=こんにちは
+      const sp = new URLSearchParams(location.search);
+      let text = sp.get('m') || '';
+      try { text = decodeURIComponent(text); } catch {}
+      document.getElementById('msg').textContent = text || '(メッセージなし)';
+      // プライバシー配慮：表示後にクエリを消す
+      if (location.search) history.replaceState(null, '', '/note.html');
     })();
   </script>
 </body>
