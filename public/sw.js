@@ -44,47 +44,50 @@ self.addEventListener('notificationclick', (event) => {
   event.notification.close();
   const u = event.notification.data?.url || '/';
   const absUrl = new URL(u, self.location.origin);
-
-  // ★ 同一URL判定を回避するため、毎回ユニークな ts を付与
   try { absUrl.searchParams.set('ts', String(Date.now())); } catch {}
 
   event.waitUntil((async () => {
-    // ★ デバッグ：クリックが発火したことをページに知らせる
+    // debug: クリック検知
     try {
       const all0 = await self.clients.matchAll({ includeUncontrolled: true, type: 'window' });
       for (const c of all0) c.postMessage({ __debug: 'notification-click', target: absUrl.href });
     } catch {}
 
-    // ★ 二系統の橋渡し手段を準備
+    // 二系統の橋渡し
     let bc = null;
     try { bc = new BroadcastChannel('sw-bridge'); } catch {}
 
-    // 1) 既存ウィンドウがあれば → focus → navigate を試みつつ、同時に二系統で“開け”シグナルを先に送る
+    // 1) 既存ウィンドウがあれば：合図→focus→navigate、ダメでも最後に openWindow を必ず試す
     const all = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
     for (const c of all) {
       if (c.url && new URL(c.url).origin === self.location.origin) {
-        // 先にページへ合図（postMessage / BroadcastChannel 両方）
+        // 合図を先出し（二系統）
         try { c.postMessage({ __open: absUrl.href }); } catch {}
         try { bc && bc.postMessage({ __open: absUrl.href }); } catch {}
 
-        // 前面化 → navigate（iOS 26 での競合を避けるため順序をこの形に）
+        // 前面化
         try { await c.focus(); } catch {}
+
+        // navigate 試行
+        let navigated = false;
         try {
           if ('navigate' in c && typeof c.navigate === 'function') {
             await c.navigate(absUrl.href);
-            return; // ここで成功したら完了
+            navigated = true;
           }
         } catch {}
 
-        // navigate に失敗しても、合図は既に送ってあるので return
+        // navigate が効かなかった場合の強制フォールバック
+        if (!navigated) {
+          try { await self.clients.openWindow(absUrl.href); } catch {}
+        }
         return;
       }
     }
 
-    // 2) 既存ウィンドウが無ければ、新規ウィンドウを開く（最終手段）
+    // 2) 既存が無ければ新規
     try { await self.clients.openWindow(absUrl.href); } catch {}
   })());
 });
-
 
   
