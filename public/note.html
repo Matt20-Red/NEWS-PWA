@@ -30,7 +30,8 @@
       // XSS防止のため textContent で反映
       document.getElementById('msg').textContent = text || '(メッセージなし)';
       // 履歴に本文を残さない
-      if (location.hash) history.replaceState(null, '', '/note');
+      // if (location.hash) history.replaceState(null, '', '/note');
+      if (location.hash) history.replaceState(null, '', '/note.html');
     })();
   </script>
 </body>
