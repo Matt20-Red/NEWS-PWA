@@ -29,7 +29,9 @@ export default async function handler(req, res) {
     }
 
     //const url = `/note#msg=${encodeURIComponent(message)}`;
-    const url = `/note.html#msg=${encodeURIComponent(message)}`;
+    //const url = `/note.html#msg=${encodeURIComponent(message)}`;
+    // 一意化して“同一URL扱いによる遷移無視”を回避
+    const url = `/note.html?ts=${Date.now()}#msg=${encodeURIComponent(message)}`;
     // const payload = JSON.stringify({ title: ' ', preview: '開いて確認してください', url });
     // const payload = JSON.stringify({ title: '通知', preview: '開いて確認してください', url });
     const payload = JSON.stringify({ title: '通知', body: message || '', url });
