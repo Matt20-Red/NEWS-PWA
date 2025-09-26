@@ -13,7 +13,9 @@ function detectService(endpoint = '') {
 // web-push にタイムアウトを付ける
 function sendWithTimeout(sub, payload, ms = 3000) {
   return Promise.race([
-    webpush.sendNotification(sub, payload),
+    // webpush.sendNotification(sub, payload),
+    // new Promise((_, rej) => setTimeout(() => rej(new Error('timeout')), ms))
+    webpush.sendNotification(sub, payload, { TTL: 60, urgency: 'high' }),
     new Promise((_, rej) => setTimeout(() => rej(new Error('timeout')), ms))
   ]);
 }
