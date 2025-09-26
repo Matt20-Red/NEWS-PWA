@@ -91,7 +91,15 @@ const log = (...a)=>{ const p=document.getElementById('log'); p.textContent += a
         method:'POST',headers:{'Content-Type':'application/json'},
         body: JSON.stringify({ code, subscription: sub })
       });
+      // log('subscribe status:', r.status);
+      // const j = await r.json();
+      // log('購読登録結果:', JSON.stringify(j));
       log('subscribe status:', r.status);
+      if (!r.ok) {
+        const t = await r.text();
+        log('subscribe ERROR body:', t.slice(0,200));
+        return;
+      }
       const j = await r.json();
       log('購読登録結果:', JSON.stringify(j));
     } catch (e) {
