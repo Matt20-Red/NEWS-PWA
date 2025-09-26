@@ -5,7 +5,7 @@ import { list, remove, count } from '../lib/store.js';
 function detectService(endpoint = '') {
   if (endpoint.includes('fcm.googleapis.com')) return 'fcm';
   if (endpoint.includes('updates.push.services.mozilla.com')) return 'mozilla';
-  if (endpoint.includes('api.push.apple.com')) return 'apple';
+  if (endpoint.includes('web.push.apple.com') || endpoint.includes('api.push.apple.com')) return 'apple';
   if (endpoint.includes('notify.windows.com')) return 'wns';
   return 'unknown';
 }
