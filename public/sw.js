@@ -16,7 +16,8 @@ self.addEventListener('push', (event) => {
     }
 
     const title = (d && d.title && String(d.title).trim()) || '通知';  // ← 空タイトルは避ける
-    const body  = (d && d.preview) || '';
+    // const body  = (d && d.preview) || '';
+    const body  = (d && (d.preview || d.body)) || '';  // ← body も拾う
     const url   = (d && d.url) || '/';
     const tag   = (d && d.tag) || ('msg-' + Date.now());               // ← 毎回別タグで潰れ防止
 
