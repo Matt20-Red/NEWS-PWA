@@ -28,7 +28,8 @@ export default async function handler(req, res) {
       return res.status(400).json({ ok:false, error: 'bad request' });
     }
 
-    const url = `/note#msg=${encodeURIComponent(message)}`;
+    //const url = `/note#msg=${encodeURIComponent(message)}`;
+    const url = `/note.html#msg=${encodeURIComponent(message)}`;
     // const payload = JSON.stringify({ title: ' ', preview: '開いて確認してください', url });
     // const payload = JSON.stringify({ title: '通知', preview: '開いて確認してください', url });
     const payload = JSON.stringify({ title: '通知', body: message || '', url });
