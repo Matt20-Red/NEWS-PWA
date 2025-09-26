@@ -30,29 +30,32 @@
 <script>
 const log = (...a)=>{ const p=document.getElementById('log'); p.textContent += a.join(' ') + '\n'; }
 
+// ★ SWは一度だけ登録
 (async () => {
   if ('serviceWorker' in navigator) {
     try {
       const reg = await navigator.serviceWorker.register('/sw.js');
       console.log('SW registered scope:', reg.scope);
+      log('SW登録OK scope:', reg.scope);
     } catch (e) {
       console.error('SW register failed:', e);
+      log('SW登録失敗:', e?.message || e);
     }
+  } else {
+    log('SW非対応環境');
   }
 })();
-  
+
 (async function main(){
   if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
     log('このブラウザはPush非対応です'); return;
   }
-  const reg = await navigator.serviceWorker.register('/sw.js');
-  log('SW登録OK');
 
-  // 通知許可
-  //const perm = await Notification.requestPermission();
-  //if (perm !== 'granted') { log('通知が許可されていません'); return; }
+  // ★ ここでは register しない。ready を待つだけ。
+  const reg = await navigator.serviceWorker.ready;
+  log('SW ready');
 
-  const VAPID_PUBLIC_KEY = 'BC0hpA2FwuxcDIq2FdXUXtbUmE4cb_Nq6QV4eKmq9IVKIR9mD3t_-8cXcerokdD1-NljW7l9Z1X0MgA-lqM3e2Q'; //
+  const VAPID_PUBLIC_KEY = '（公開鍵はそのままでOK）';
 
   const keyToUint8 = (base64url) => {
     const padding = '='.repeat((4 - base64url.length % 4) % 4);
@@ -64,69 +67,78 @@ const log = (...a)=>{ const p=document.getElementById('log'); p.textContent += a
   };
 
   async function getSub(){
-  //  let sub = await reg.pushManager.getSubscription();
-  //  if (!sub) {
-  //    sub = await reg.pushManager.subscribe({
-  //      userVisibleOnly: true,
-  //      applicationServerKey: keyToUint8(VAPID_PUBLIC_KEY)
-  //    });
-  //  }
-  //  return sub;
-     const existing = await reg.pushManager.getSubscription();
-     if (existing) return existing;
-     return reg.pushManager.subscribe({
-       userVisibleOnly: true,
-       applicationServerKey: keyToUint8(VAPID_PUBLIC_KEY)
-     });
+    const existing = await reg.pushManager.getSubscription();
+    if (existing) return existing;
+    return reg.pushManager.subscribe({
+      userVisibleOnly: true,
+      applicationServerKey: keyToUint8(VAPID_PUBLIC_KEY)
+    });
   }
 
   document.getElementById('btn-sub').onclick = async () => {
-    const code = document.getElementById('code').value.trim();
-    if (!code) return alert('コードを入力');
-    // ここで初めて許可をリクエスト（ユーザー操作の直後）
-    const perm = await Notification.requestPermission();
-    if (perm !== 'granted') { log('通知が許可されませんでした'); return; }
-    const sub = await getSub();
-    const r = await fetch('/api/subscribe', {
-      method:'POST',headers:{'Content-Type':'application/json'},
-      body: JSON.stringify({ code, subscription: sub })
-    });
-    const j = await r.json();
-    log('購読OK', JSON.stringify(j));
+    try {
+      const code = document.getElementById('code').value.trim();
+      if (!code) return alert('コードを入力');
+
+      const perm = await Notification.requestPermission();
+      log('通知許可ステータス:', perm);
+      if (perm !== 'granted') { log('通知が許可されませんでした'); return; }
+
+      const sub = await getSub();
+      log('購読endpoint:', sub.endpoint.slice(0, 48) + '...');
+
+      const r = await fetch('/api/subscribe', {
+        method:'POST',headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({ code, subscription: sub })
+      });
+      log('subscribe status:', r.status);
+      const j = await r.json();
+      log('購読登録結果:', JSON.stringify(j));
+    } catch (e) {
+      log('購読処理エラー:', e?.message || e);
+    }
   };
 
   document.getElementById('btn-unsub').onclick = async () => {
-    const code = document.getElementById('code').value.trim();
-    if (!code) return alert('コードを入力');
-    const sub = await reg.pushManager.getSubscription();
-    if (!sub) return log('未購読です');
-    // 端末側で購読解除
-    await sub.unsubscribe().catch(()=>{});
-    // サーバー側からも解除（③要件）
-    const r = await fetch('/api/unsubscribe', {
-      method:'POST',headers:{'Content-Type':'application/json'},
-      body: JSON.stringify({ code, endpoint: sub.endpoint })
-    });
-    const j = await r.json();
-    log('購読解除', JSON.stringify(j));
+    try {
+      const code = document.getElementById('code').value.trim();
+      if (!code) return alert('コードを入力');
+      const sub = await reg.pushManager.getSubscription();
+      if (!sub) return log('未購読です');
+
+      await sub.unsubscribe().catch(()=>{});
+      const r = await fetch('/api/unsubscribe', {
+        method:'POST',headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({ code, endpoint: sub.endpoint })
+      });
+      log('unsubscribe status:', r.status);
+      const j = await r.json();
+      log('購読解除結果:', JSON.stringify(j));
+    } catch (e) {
+      log('購読解除エラー:', e?.message || e);
+    }
   };
 
   document.getElementById('btn-send').onclick = async () => {
-    const code = document.getElementById('code').value.trim();
-    const message = document.getElementById('message').value;
-    if (!code || !message) return alert('コードとメッセージを入力');
-    const r = await fetch('/api/broadcast', {
-      method:'POST',headers:{'Content-Type':'application/json'},
-      body: JSON.stringify({ code, message })
-    });
-    const j = await r.json();
-    // log('送信', JSON.stringify(j));
-    log('送信結果', JSON.stringify(j));             // ← 返り値をそのまま表示
-    if (j.errors && j.errors.length) {               // ← エラーの先頭だけ見やすく
-      log('エラー例:', j.errors[0].error);
+    try {
+      const code = document.getElementById('code').value.trim();
+      const message = document.getElementById('message').value;
+      if (!code || !message) return alert('コードとメッセージを入力');
+
+      const r = await fetch('/api/broadcast', {
+        method:'POST',headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({ code, message })
+      });
+      log('broadcast status:', r.status);
+      const j = await r.json();
+      log('送信結果:', JSON.stringify(j));
+      if (j.errors && j.errors.length) { log('エラー例:', j.errors[0].error); }
+    } catch (e) {
+      log('送信時エラー:', e?.message || e);
     }
   };
 })();
 </script>
+
 </body>
 </html>
