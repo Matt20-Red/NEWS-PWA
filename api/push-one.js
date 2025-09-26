@@ -8,10 +8,15 @@ export default async function handler(req, res) {
     if (!subscription?.endpoint || typeof message !== 'string') {
       return res.status(400).json({ ok:false, error:'bad request' });
     }
+    // const payload = JSON.stringify({
+    //   title: '通知',
+    //   body: message || 'テスト',
+    //   url: `/note#msg=${encodeURIComponent(message || 'テスト')}`
+    const url = `/note.html?ts=${Date.now()}#msg=${encodeURIComponent(message || 'テスト')}`;
     const payload = JSON.stringify({
       title: '通知',
       body: message || 'テスト',
-      url: `/note#msg=${encodeURIComponent(message || 'テスト')}`
+      url
     });
 
     // TTL/Urgency を明示（iOS向け）
