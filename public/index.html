@@ -28,6 +28,7 @@
 <!-- ★ここに追加 -->
 <button id="btn-local">ローカル通知テスト</button>
 <button id="btn-self">自分にテスト送信</button>
+<button id="btn-apple">Apple限定送信</button>
   
 <pre id="log"></pre>
 
@@ -190,7 +191,18 @@ const log = (...a)=>{ const p=document.getElementById('log'); p.textContent += a
   } catch (e) {
     log('self-send error:', e?.message || e);
   }
-    
+  };
+
+document.getElementById('btn-apple').onclick = async () => {
+  const code = document.getElementById('code').value.trim();
+  const message = document.getElementById('message').value || 'apple only';
+  if (!code) return alert('コードを入力');
+  const r = await fetch('/api/broadcast-apple', {
+    method:'POST', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({ code, message })
+  });
+  log('apple-only status:', r.status);
+  log('apple-only body:', (await r.text()).slice(0,400));
 };
   
 })();
