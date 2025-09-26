@@ -42,10 +42,39 @@ self.addEventListener('push', (event) => {
 
 self.addEventListener('notificationclick', (event) => {
   event.notification.close();
-  // const url = event.notification.data?.url || '/';
-  // event.waitUntil(self.clients.openWindow(url));
   const u = event.notification.data?.url || '/';
-  const abs = new URL(u, self.location.origin).href; // ← 絶対URLに
-  event.waitUntil(self.clients.openWindow(abs));
+  const abs = new URL(u, self.location.origin).href;
+
+  event.waitUntil((async () => {
+    // ★ 追加: BroadcastChannel でも橋渡し（届く経路を増やす）
+    let bc = null;
+    try { bc = new BroadcastChannel('sw-bridge'); } catch {}
+
+    // 1) 既存ウィンドウがあれば → focus → navigate を試みる
+    const all = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
+    for (const c of all) {
+      if (c.url && new URL(c.url).origin === self.location.origin) {
+        try { await c.focus(); } catch {}
+        try {
+          if ('navigate' in c && typeof c.navigate === 'function') {
+            await c.navigate(abs);
+            // 併せて二系統で「開け」シグナルを送る（念のため）
+            try { c.postMessage({ __open: abs }); } catch {}
+            try { bc && bc.postMessage({ __open: abs }); } catch {}
+            return;
+          }
+        } catch {}
+
+        // 2) navigate が効かない系 → ページ側に任せる（二系統）
+        try { c.postMessage({ __open: abs }); } catch {}
+        try { bc && bc.postMessage({ __open: abs }); } catch {}
+        return;
+      }
+    }
+
+    // 3) 既存ウィンドウがなければ新規に開く（最終手段）
+    try { await self.clients.openWindow(abs); } catch {}
+  })());
+});
   
 });
