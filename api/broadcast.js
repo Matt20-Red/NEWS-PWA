@@ -1,4 +1,3 @@
-
 // api/broadcast.js
 import { webpush } from './_common.js';
 import { list, remove, count } from '../lib/store.js';
@@ -15,8 +14,11 @@ export default async function handler(req, res) {
   try {
     if (req.method !== 'POST') return res.status(405).end();
     const { code, message } = req.body || {};
-    if (!code || typeof message !== 'string') return res.status(400).json({ ok:false });
+    if (!code || typeof message !== 'string') {
+      return res.status(400).json({ ok:false, error: 'bad request' });
+    }
 
+    // iPhoneでロック後でも読めるよう、フラグメントで渡す
     const url = `/note#msg=${encodeURIComponent(message)}`;
     const payload = { title: ' ', preview: '開いて確認してください', url };
 
@@ -27,7 +29,7 @@ export default async function handler(req, res) {
 
     for (const sub of subs) {
       const service = detectService(sub.endpoint);
-      // WNS は一旦スキップ（web-push非対応のため）
+      // Windows Edge (WNS) は web-push 非対応なので一旦スキップ
       if (service === 'wns') {
         skipped.push({ endpoint: sub.endpoint, reason: 'wns-not-supported' });
         continue;
@@ -40,7 +42,7 @@ export default async function handler(req, res) {
         const msg = String(e);
         if (msg.includes('410') || msg.includes('404')) {
           expired += await remove(code, sub.endpoint);
-        } else if (msg.includes('429') || msg.match(/\b5\d\d\b/)) {
+        } else if (msg.includes('429') || /\b5\d\d\b/.test(msg)) {
           retry++;
         }
         errors.push({ endpoint: sub.endpoint, service, error: msg.slice(0, 300) });
@@ -49,11 +51,10 @@ export default async function handler(req, res) {
 
     const remaining = await count(code);
 
-    // レポートも同報送信（レポート送信で落ちないよう try/catch）
+    // 送信レポート（落ちないよう個別try）
     const report = {
       title: 'System',
-      preview:
-        `送信レポート → Attempted:${attempted} / Accepted:${accepted} / Expired:${expired} / Retry:${retry} / Remaining:${remaining} / Skipped(WNS):${skipped.length}`
+      preview: `送信レポート → Attempted:${attempted} / Accepted:${accepted} / Expired:${expired} / Retry:${retry} / Remaining:${remaining} / Skipped(WNS):${skipped.length}`
     };
     for (const sub of await list(code)) {
       try { await webpush.sendNotification(sub, JSON.stringify(report)); } catch {}
@@ -65,3 +66,4 @@ export default async function handler(req, res) {
     return res.status(500).json({ ok:false, error: String(e) });
   }
 }
+
