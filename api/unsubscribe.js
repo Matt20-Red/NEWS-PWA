@@ -1,4 +1,3 @@
-// api/unsubscribe.js
 import { webpush } from './_common.js';
 import { remove, count, list } from '../lib/store.js';
 
@@ -7,8 +6,8 @@ export default async function handler(req, res) {
   const { code, endpoint } = req.body || {};
   if (!code || !endpoint) return res.status(400).json({ ok: false });
 
-  const removed = remove(code, endpoint);
-  const members = count(code);
+  const removed = await remove(code, endpoint);  // ★ await
+  const members = await count(code);             // ★ await
 
   if (removed > 0) {
     await notifyTo(code, {
@@ -24,14 +23,14 @@ export default async function handler(req, res) {
 }
 
 async function notifyTo(code, payload) {
-  const subs = list(code);
+  const subs = await list(code);                 // ★ await
   const data = JSON.stringify(payload);
   for (const sub of subs) {
     try { await webpush.sendNotification(sub, data); } catch {}
   }
 }
 async function reportDelivery(code, headPayload) {
-  const subs = list(code).slice();
+  const subs = [...await list(code)];            // ★ await
   let attempted = 0, accepted = 0, expired = 0, retry = 0;
   for (const sub of subs) {
     attempted++;
@@ -44,13 +43,12 @@ async function reportDelivery(code, headPayload) {
       else if (msg.includes('429') || msg.includes('5')) retry++;
     }
   }
-  const remaining = count(code);
+  const remaining = await count(code);           // ★ await
   const summary = {
     title: 'System',
-    preview:
-      `Attempted:${attempted} / Accepted:${accepted} / Expired:${expired} / Retry:${retry} / Remaining:${remaining}`
+    preview: `Attempted:${attempted} / Accepted:${accepted} / Expired:${expired} / Retry:${retry} / Remaining:${remaining}`
   };
-  for (const sub of list(code)) {
+  for (const sub of await list(code)) {          // ★ await
     try { await webpush.sendNotification(sub, JSON.stringify(summary)); } catch {}
   }
 }
