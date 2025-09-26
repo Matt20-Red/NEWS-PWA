@@ -20,8 +20,17 @@ self.addEventListener('push', (event) => {
     const url   = (d && d.url) || '/';
     const tag   = (d && d.tag) || ('msg-' + Date.now());               // ← 毎回別タグで潰れ防止
 
+    // ★ デバッグ：クライアントへ「push受信したよ」と知らせる
+    try {
+      const all = await self.clients.matchAll({ includeUncontrolled: true, type: 'window' });
+      for (const c of all) c.postMessage({ __debug: 'push-received', title, body, url, tag });
+    } catch {}
+
+    
     await self.registration.showNotification(title, {
       body,
+      icon: '/icon-192.png',          // ← 念のためアイコン/バッジも付与
+      badge: '/icon-192.png',
       data: { url },
       tag,
       renotify: false // 同じtagでも連続バイブ等を抑制
