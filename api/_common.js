@@ -3,10 +3,14 @@ import webpush from 'web-push';
 
 const { VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY, VAPID_SUBJECT } = process.env;
 
-webpush.setVapidDetails(
-  VAPID_SUBJECT || 'beams-gumtree2@icloud.com',
-  VAPID_PUBLIC_KEY,
-  VAPID_PRIVATE_KEY
-);
+try {
+  webpush.setVapidDetails(
+    VAPID_SUBJECT || 'mailto:you@example.com',
+    VAPID_PUBLIC_KEY,
+    VAPID_PRIVATE_KEY
+  );
+} catch (e) {
+  console.error('VAPID init error:', e);
+}
 
 export { webpush };
