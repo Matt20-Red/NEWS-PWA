@@ -47,45 +47,30 @@ self.addEventListener('notificationclick', (event) => {
   try { absUrl.searchParams.set('ts', String(Date.now())); } catch {}
 
   event.waitUntil((async () => {
-    // debug: クリック検知
+    // デバッグ：クリック検知
     try {
       const all0 = await self.clients.matchAll({ includeUncontrolled: true, type: 'window' });
       for (const c of all0) c.postMessage({ __debug: 'notification-click', target: absUrl.href });
     } catch {}
 
-    // 二系統の橋渡し
+    // 二系統シグナルを“先出し”
     let bc = null;
     try { bc = new BroadcastChannel('sw-bridge'); } catch {}
-
-    // 1) 既存ウィンドウがあれば：合図→focus→navigate、ダメでも最後に openWindow を必ず試す
-    const all = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
-    for (const c of all) {
-      if (c.url && new URL(c.url).origin === self.location.origin) {
-        // 合図を先出し（二系統）
-        try { c.postMessage({ __open: absUrl.href }); } catch {}
-        try { bc && bc.postMessage({ __open: absUrl.href }); } catch {}
-
-        // 前面化
-        try { await c.focus(); } catch {}
-
-        // navigate 試行
-        let navigated = false;
-        try {
-          if ('navigate' in c && typeof c.navigate === 'function') {
-            await c.navigate(absUrl.href);
-            navigated = true;
-          }
-        } catch {}
-
-        // navigate が効かなかった場合の強制フォールバック
-        if (!navigated) {
-          try { await self.clients.openWindow(absUrl.href); } catch {}
+    try {
+      const all = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
+      for (const c of all) {
+        if (c.url && new URL(c.url).origin === self.location.origin) {
+          try { c.postMessage({ __open: absUrl.href }); } catch {}
         }
-        return;
       }
-    }
+      try { bc && bc.postMessage({ __open: absUrl.href }); } catch {}
+    } catch {}
 
-    // 2) 既存が無ければ新規
+    // ★ 既存ウィンドウの有無に関係なく “必ず” 新規／既存で開かせる
+    try { await self.clients.openWindow(absUrl.href); } catch {}
+
+    // （端末差対策）ごく短い待ちののち、もう一度 openWindow を試す
+    try { await new Promise(r => setTimeout(r, 50)); } catch {}
     try { await self.clients.openWindow(absUrl.href); } catch {}
   })());
 });
