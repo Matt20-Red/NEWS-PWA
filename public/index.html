@@ -170,19 +170,19 @@ const log = (...a)=>{ const p=document.getElementById('log'); p.textContent += a
     });
     log('local notification requested');
   };
-  
 })();
-  <script>
-  if (navigator.serviceWorker) {
-    navigator.serviceWorker.addEventListener('message', (e) => {
-      const m = e.data || {};
-      if (m.__debug === 'push-received') {
-        log('SW says: push-received', JSON.stringify({ title: m.title, hasBody: !!m.body, url: m.url }));
-      }
-    });
-  }
-　</script>
 </script>
 
+<script>
+if (navigator.serviceWorker) {
+  navigator.serviceWorker.addEventListener('message', (e) => {
+    const m = e.data || {};
+    if (m.__debug === 'push-received') {
+      log('SW says: push-received', JSON.stringify({ title: m.title, hasBody: !!m.body, url: m.url }));
+    }
+  });
+}
+</script>
+  
 </body>
 </html>
