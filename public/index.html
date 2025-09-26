@@ -30,6 +30,17 @@
 <script>
 const log = (...a)=>{ const p=document.getElementById('log'); p.textContent += a.join(' ') + '\n'; }
 
+(async () => {
+  if ('serviceWorker' in navigator) {
+    try {
+      const reg = await navigator.serviceWorker.register('/sw.js');
+      console.log('SW registered scope:', reg.scope);
+    } catch (e) {
+      console.error('SW register failed:', e);
+    }
+  }
+})();
+  
 (async function main(){
   if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
     log('このブラウザはPush非対応です'); return;
