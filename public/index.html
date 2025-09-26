@@ -27,6 +27,7 @@
   
 <!-- ★ここに追加 -->
 <button id="btn-local">ローカル通知テスト</button>
+<button id="btn-self">自分にテスト送信</button>
   
 <pre id="log"></pre>
 
@@ -170,6 +171,28 @@ const log = (...a)=>{ const p=document.getElementById('log'); p.textContent += a
     });
     log('local notification requested');
   };
+
+  document.getElementById('btn-self').onclick = async () => {
+  try {
+    log('self-send: start');
+    const reg = await navigator.serviceWorker.ready;
+    let sub = await reg.pushManager.getSubscription();
+    if (!sub) {
+      alert('先に購読してください'); return;
+    }
+    const r = await fetch('/api/push-one', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ message: 'self test', subscription: sub })
+    });
+    log('self-send status:', r.status);
+    const t = await r.text();
+    log('self-send body:', t.slice(0,300));
+  } catch (e) {
+    log('self-send error:', e?.message || e);
+  }
+    
+};
+  
 })();
 </script>
 
