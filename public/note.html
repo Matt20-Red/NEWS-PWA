@@ -1,22 +1,37 @@
 <!doctype html>
 <html lang="ja">
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Note</title>
-<style>body{font-family:system-ui,sans-serif;max-width:640px;margin:24px auto;padding:0 12px}</style>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>メッセージ</title>
+  <style>
+    body { font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif; margin: 16px; }
+    .wrap { max-width: 720px; margin: 0 auto; }
+    h1 { font-size: 18px; margin: 0 0 12px; color:#333; }
+    pre { white-space: pre-wrap; word-break: break-word; background:#f6f6f6; padding:12px; border-radius:8px; }
+    .meta { color:#666; font-size:12px; margin-top:8px; }
+  </style>
+</head>
 <body>
-<pre id="view">読み込み中…</pre>
-<script>
-  const h = decodeURIComponent(location.hash||'');
-  const m = h.startsWith('#msg=') ? h.slice(5) : '';
-  const el = document.getElementById('view');
-  if (m) {
-    el.textContent = m;
-    // 履歴から本文を消す（⑦要件）
-    history.replaceState(null, '', '/note');
-  } else {
-    el.textContent = 'メッセージは見つかりませんでした';
-  }
-</script>
+  <div class="wrap">
+    <h1>受信メッセージ</h1>
+    <pre id="msg">(メッセージなし)</pre>
+    <div class="meta">※ URLフラグメントは表示後に消去されます。</div>
+  </div>
+  <script>
+    (function () {
+      // 例: /note#msg=こんにちは
+      const h = location.hash || '';
+      let text = '';
+      const m = h.match(/^#msg=(.*)$/);
+      if (m) {
+        try { text = decodeURIComponent(m[1]); } catch { text = m[1]; }
+      }
+      // XSS防止のため textContent で反映
+      document.getElementById('msg').textContent = text || '(メッセージなし)';
+      // 履歴に本文を残さない
+      if (location.hash) history.replaceState(null, '', '/note');
+    })();
+  </script>
 </body>
 </html>
