@@ -218,6 +218,32 @@ if (navigator.serviceWorker) {
   });
 }
 </script>
-  
+
+<script>
+if (navigator.serviceWorker) {
+  navigator.serviceWorker.addEventListener('message', (e) => {
+    const m = e.data || {};
+    if (m.__debug === 'push-received') {
+      log('SW says: push-received', JSON.stringify({ title: m.title, hasBody: !!m.body, url: m.url }));
+    }
+    // ★ 追加: SW からの直接 postMessage で遷移
+    if (m.__open) {
+      try { location.href = m.__open; } catch {}
+    }
+  });
+}
+
+/* ★ 追加: BroadcastChannel でも遷移指示を受ける */
+try {
+  const bc = new BroadcastChannel('sw-bridge');
+  bc.onmessage = (e) => {
+    const m = e.data || {};
+    if (m.__open) {
+      try { location.href = m.__open; } catch {}
+    }
+  };
+} catch {}
+</script>
+
 </body>
 </html>
