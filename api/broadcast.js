@@ -46,7 +46,8 @@ export default async function handler(req, res) {
 
     // 一意化URLで“同一URL最適化による無視”を避ける
     const url = `/note.html?ts=${Date.now()}#msg=${encodeURIComponent(message)}`;
-    const payload = JSON.stringify({ title: '通知', body: message, url });
+    // const payload = JSON.stringify({ title: '通知', body: message, url });
+    const payload = JSON.stringify({ title: '通知', body: message || '', url });
 
     const subsAll = await list(code);
     const targets = subsAll.filter(s => detectService(s.endpoint) !== 'wns'); // WNSは非対応なので除外
