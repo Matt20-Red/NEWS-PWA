@@ -27,7 +27,8 @@ export default async function handler(req, res) {
     }
 
     const url = `/note#msg=${encodeURIComponent(message)}`;
-    const payload = JSON.stringify({ title: ' ', preview: '開いて確認してください', url });
+    // const payload = JSON.stringify({ title: ' ', preview: '開いて確認してください', url });
+    const payload = JSON.stringify({ title: '通知', preview: '開いて確認してください', url });
 
     const subsAll = await list(code);
     const targets = subsAll.filter(s => detectService(s.endpoint) !== 'wns'); // WNS除外
