@@ -1,4 +1,3 @@
-// api/subscribe.js
 import { webpush } from './_common.js';
 import { add, count, list, remove } from '../lib/store.js';
 
@@ -8,11 +7,12 @@ export default async function handler(req, res) {
   if (!code || !subscription?.endpoint) {
     return res.status(400).json({ ok: false, error: 'bad request' });
   }
-  const existed = !add(code, subscription);
-  const members = count(code);
+
+  const added = await add(code, subscription);   // ★ await
+  const members = await count(code);             // ★ await
 
   // 追加があった時のみ「購読申込あり」メッセージ & レポート配信
-  if (!existed) {
+  if (added) {
     await notifyTo(code, {
       title: 'System',
       preview: `購読申込あり: "${code}" → 現在 ${members} 件`
@@ -25,19 +25,20 @@ export default async function handler(req, res) {
   return res.json({ ok: true, members });
 }
 
-// ユーティリティ
+// ---- helpers
 async function notifyTo(code, payload) {
-  const subs = list(code);
+  const subs = await list(code);                 // ★ await
   const data = JSON.stringify(payload);
   for (const sub of subs) {
     try { await webpush.sendNotification(sub, data); }
-    catch { /* 通知失敗はここでは無視（レポートで処理） */ }
+    catch {}
   }
 }
 
 async function reportDelivery(code, headPayload) {
-  const subs = list(code).slice();
+  const subs = [...await list(code)];            // ★ await
   let attempted = 0, accepted = 0, expired = 0, retry = 0;
+
   for (const sub of subs) {
     attempted++;
     try {
@@ -46,20 +47,18 @@ async function reportDelivery(code, headPayload) {
     } catch (e) {
       const msg = String(e);
       if (msg.includes('410') || msg.includes('404')) {
-        expired += remove(code, sub.endpoint);
+        expired += await remove(code, sub.endpoint);  // ★ await
       } else if (msg.includes('429') || msg.includes('5')) {
         retry++;
       }
     }
   }
-  const remaining = count(code);
+  const remaining = await count(code);           // ★ await
   const summary = {
     title: 'System',
-    preview:
-      `Attempted:${attempted} / Accepted:${accepted} / Expired:${expired} / Retry:${retry} / Remaining:${remaining}`
+    preview: `Attempted:${attempted} / Accepted:${accepted} / Expired:${expired} / Retry:${retry} / Remaining:${remaining}`
   };
-  // 成果も投げる（失効はすでに削除済み）
-  const finalSubs = list(code);
+  const finalSubs = await list(code);            // ★ await
   for (const sub of finalSubs) {
     try { await webpush.sendNotification(sub, JSON.stringify(summary)); } catch {}
   }
