@@ -15,8 +15,21 @@ export default async function handler(req, res) {
     });
 
     // TTL/Urgency を明示（iOS向け）
-    await webpush.sendNotification(subscription, payload, { TTL:60, urgency:'high' });
-    return res.json({ ok:true });
+    // await webpush.sendNotification(subscription, payload, { TTL:60, urgency:'high' });
+    // return res.json({ ok:true });
+    try {
+      await webpush.sendNotification(subscription, payload, { TTL:60, urgency:'high' });
+      return res.json({ ok:true });
+    } catch (e) {
+      const err = {
+        message: String(e.message || e),
+        statusCode: e.statusCode || null,
+        headers: e.headers || null,
+        body: e.body ? String(e.body).slice(0,400) : null,
+      };
+      return res.status(500).json({ ok:false, error: 'WebPushError', detail: err });
+    }
+    
   } catch (e) {
     return res.status(500).json({ ok:false, error:String(e) });
   }
