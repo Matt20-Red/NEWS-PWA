@@ -3,7 +3,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <link rel="manifest" href="/manifest.json">
-<title>通知PWA</title>
+<title>bat</title>
 <style>
   body{font-family:system-ui, sans-serif;max-width:640px;margin:24px auto;padding:0 12px}
   input,textarea,button{font:inherit;padding:8px;border-radius:8px;border:1px solid #ccc}
@@ -11,33 +11,53 @@
   .row{display:flex;gap:8px;margin:8px 0}
   .grow{flex:1}
 </style>
+<style>
+  :root { color-scheme: dark; }
+  html, body { background:#000; color:#fff; }
+  input, textarea { background:#111; color:#fff; border:1px solid #333; border-radius:8px; padding:8px; }
+  button { background:#222; color:#fff; border:1px solid #444; border-radius:10px; padding:8px 12px; cursor:pointer; }
+  button:hover { background:#2a2a2a; }
+  .row { display:flex; gap:8px; align-items:center; }
+  .muted { color:#aaa; font-size:12px; }
+  .hidden { display:none !important; }
+  #inbox-section h2 { font-size:16px; margin:0; }
+</style>
+  
 <body>
-<h1 style="font-weight:600">通知PWA</h1>
+<h1 style="font-weight:600">bat</h1>
 
 <div class="row">
-  <input id="code" class="grow" placeholder="共有コード">
-  <button id="btn-sub">購読</button>
-  <button id="btn-unsub">購読解除</button>
+  <input id="code" class="grow" placeholder="Code">
+  <button id="btn-sub">Subscribe</button>
+  <button id="btn-unsub">Unsubscribe</button>
 </div>
 
-<textarea id="message" placeholder="メッセージ"></textarea>
+<textarea id="message" placeholder="Message"></textarea>
 <div class="row">
-  <button id="btn-send" class="grow">送信</button>
+  <button id="btn-send" class="grow">Send</button>
 </div>
   
 <!-- ★ここに追加 -->
-<button id="btn-local">ローカル通知テスト</button>
-<button id="btn-self">自分にテスト送信</button>
-<button id="btn-apple">Apple限定送信</button>
+<button id="btn-local" class="hidden">ローカル通知テスト</button>
+<button id="btn-self" class="hidden">自分にテスト送信</button>
+<button id="btn-apple" class="hidden">Apple限定送信</button>
   
 <pre id="log"></pre>
 
+<section id="delivery" style="margin-top:12px;">
+  <div class="row">
+    <h2 style="font-size:16px;margin:0;">Last delivery</h2>
+    <span id="delivery-meta" class="muted"></span>
+  </div>
+  <div id="delivery-result" class="muted">No recent delivery.</div>
+</section>
+  
 <!-- 受信箱ビュー（コード別の最新K件を直読で描画） -->
 <section id="inbox-section" style="margin-top:12px;">
   <div class="row" style="align-items:center;">
-    <h2 style="margin:0; font-size:16px;">受信箱（端末内・直近数件）</h2>
-    <button id="inbox-refresh" style="margin-left:auto;">更新</button>
-    <button id="inbox-pop-latest">最新を開く</button>
+    <h2 style="margin:0; font-size:16px;">MessageBox（Local・Recent）</h2>
+    <button id="inbox-refresh" style="margin-left:auto;">Update</button>
+    <button id="inbox-pop-latest">OpenLatest</button>
   </div>
   <ul id="inbox-list" style="padding-left:18px; margin-top:8px;"></ul>
 </section>
