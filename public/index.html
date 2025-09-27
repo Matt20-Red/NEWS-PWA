@@ -332,6 +332,7 @@ if (navigator.serviceWorker) {
     // 2) デバッグ（受信確認）
     if (m.__debug === 'push-received') {
       log('SW says: push-received', JSON.stringify({ title: m.title, hasBody: !!m.body, url: m.url }));
+      log('SW says: inbox-saved', JSON.stringify({ code: m.code, count: m.count }));
     }
 
     // 3) 旧E対策の __open（フォールバック経路）
