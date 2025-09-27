@@ -283,7 +283,7 @@ if (navigator.serviceWorker) {
   navigator.serviceWorker.addEventListener('message', (e) => {
     const m = e.data || {};
     // 既存：__debug / __open の処理はそのまま
-    if (m.__intent) showInApp(m.__intent);
+    // if (m.__intent) showInApp(m.__intent);
       if (m.__intent) {
         showInApp(m.__intent);
         // ★ SWにACKを返す（手元で受け取れた合図）
@@ -308,13 +308,14 @@ try {
   };
 } catch {}
 
-/*
+
 // ===== 前面化で “遅延回収”：SWへ intent 問い合わせ =====
 function requestLastIntent() {
   const ctrl = navigator.serviceWorker && navigator.serviceWorker.controller;
   if (ctrl) { try { ctrl.postMessage({ __req_intent: true }); } catch {} }
 }
 // 既存の requestLastOpen() があれば併存OK（上書きしません）
+/*
 document.addEventListener('visibilitychange', () => { if (!document.hidden) setTimeout(requestLastIntent, 0); });
 window.addEventListener('pageshow', () => setTimeout(requestLastIntent, 0));
 window.addEventListener('focus', () => setTimeout(requestLastIntent, 0));
