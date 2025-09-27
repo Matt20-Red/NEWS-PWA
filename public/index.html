@@ -212,6 +212,7 @@ document.getElementById('btn-apple').onclick = async () => {
 <script>
 if (navigator.serviceWorker) {
   navigator.serviceWorker.addEventListener('message', (e) => {
+    if (m.__inbox) handleInboxData(m);
     const m = e.data || {};
     if (m.__debug === 'push-received') {
       log('SW says: push-received', JSON.stringify({ title: m.title, hasBody: !!m.body, url: m.url }));
@@ -342,6 +343,47 @@ document.addEventListener('visibilitychange', () => {
 });
 window.addEventListener('pageshow', () => pollLastIntentBriefly());
 window.addEventListener('focus', () => pollLastIntentBriefly());
+
+// 共有コードを入力欄から取得（あなたのUIに合わせて）
+function currentCode() {
+  const el = document.getElementById('code');
+  return el ? (el.value || '').trim() : '';
+}
+
+function pollInboxBriefly() {
+  let tries = 0, max = 8;
+  (async function loop(){
+    const code = currentCode();
+    if (code) requestInbox(code, { consume: true }); // 最新1件を取りに行く
+    tries++;
+    if (tries < max) { await new Promise(r => setTimeout(r, 250)); loop(); }
+  })();
+}
+
+// 既存の前面化フックに “受信箱回収” を足す
+document.addEventListener('visibilitychange', () => { if (!document.hidden) pollInboxBriefly(); });
+window.addEventListener('pageshow', () => pollInboxBriefly());
+window.addEventListener('focus', () => pollInboxBriefly());
+
+// === 受信箱・回収 ===
+function requestInbox(code, { consume = true, ttlMs = 3*60*60*1000 } = {}) {
+  const ctrl = navigator.serviceWorker && navigator.serviceWorker.controller;
+  if (!ctrl || !code) return;
+  try { ctrl.postMessage({ __req_inbox: true, code, consume, ttlMs }); } catch {}
+}
+
+// SWから受け取った受信箱データを in-app で表示
+function handleInboxData(msg) {
+  if (!msg || !msg.__inbox) return;
+  const data = msg.data;
+  if (!data) return; // 未読なし
+  // data は1件（consume:true）
+  showInApp({
+    title: data.title || '通知',
+    body: data.body || '',
+    url:  data.url || '/'
+  });
+}
   
 </script>
 
