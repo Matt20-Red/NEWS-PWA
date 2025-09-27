@@ -17,7 +17,7 @@
     <h1>受信メッセージ</h1>
     <pre id="msg">(メッセージなし)</pre>
     <p style="margin-top:12px;">
-      <a href="/" style="text-decoration:none; padding:8px 12px; border-radius:8px; background:#eee;">アプリ画面に戻る</a>
+      <a id="back-to-app" href="/" style="text-decoration:none; padding:8px 12px; border-radius:8px; background:#eee;">アプリ画面に戻る</a>
     </p>
     <div class="meta">※ URLフラグメントは表示後に消去されます。</div>
   </div>
@@ -43,7 +43,12 @@
       document.getElementById('msg').textContent = text || '(メッセージなし)';
       // プライバシー配慮：表示後にクエリを消す
       if (location.search) history.replaceState(null, '', '/note.html');
-    })();
+
+      document.getElementById('back-to-app')?.addEventListener('click', (e) => {
+        try { sessionStorage.setItem('suppressAutoOpenUntil', String(Date.now() + 3000)); } catch {}
+        // aタグのhref="/" でそのまま遷移（preventDefault不要）
+
+      })();
   </script>
 </body>
 </html>
