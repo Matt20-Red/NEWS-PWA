@@ -165,6 +165,8 @@ self.addEventListener('notificationclick', (event) => {
     for (const c of all) {
       if (c.url && new URL(c.url).origin === self.location.origin) {
         hasSameOrigin = true;
+        // ① まず前面化を明示（OSの前面化直後に受け口が整いやすくなる）
+        try { await c.focus(); } catch {}
         try { c.postMessage({ __intent: intent }); } catch {}
       }
     }
@@ -173,7 +175,7 @@ self.addEventListener('notificationclick', (event) => {
     // ★ 既存クライアントがいる想定でも ACK を待つ。来なければ /note へフォールバック
     let acked = false;
     if (hasSameOrigin) {
-      try { acked = await waitIntentAck(intent.id, 600); } catch {}
+      try { acked = await waitIntentAck(intent.id, 1200); } catch {}
     }
     
     // 3) 既存クライアントが無ければ /note.html を開く（フォールバック）
@@ -181,7 +183,7 @@ self.addEventListener('notificationclick', (event) => {
     if (!hasSameOrigin || !acked) {
       // 既存なし or 合図ロスト → /note.html を開く（保険）
       try { await self.clients.openWindow(absUrl.href); } catch {}
-      try { await new Promise(r => setTimeout(r, 150)); await self.clients.openWindow(absUrl.href); } catch {}
+      try { await new Promise(r => setTimeout(r, 350)); await self.clients.openWindow(absUrl.href); } catch {}
     }
   })());
 });
