@@ -65,7 +65,7 @@
 <script>
 //const log = (...a)=>{ const p=document.getElementById('log'); p.textContent += a.join(' ') + '\n'; }
  // 重要なものだけ画面に出す（コンソールには全部流す）
-  const LOG_ALLOW = /^(SW ready|SW登録OK|broadcast result|SW says: inbox-saved)/;
+  const LOG_ALLOW = /^(SW ready|SW登録OK|SW says: inbox-saved)/;
   const log = (...args) => {
     try {
       const txt = args.map(x => (typeof x==='string' ? x : JSON.stringify(x))).join(' ');
@@ -188,9 +188,11 @@
         method:'POST',headers:{'Content-Type':'application/json'},
         body: JSON.stringify({ code, message })
       });
-      log('broadcast status:', r.status);
+      // log('broadcast status:', r.status);
+      console.log('broadcast status:', r.status);
       // const j = await r.json();
       // log('送信結果:', JSON.stringify(j));
+      // console.log('送信結果:', j);
       // if (j.errors && j.errors.length) { log('エラー例:', j.errors[0].error); }
       if (!r.ok) {
         const t = await r.text();
@@ -198,9 +200,11 @@
         return;
       }
       const j = await r.json().catch(e => ({ parseError: String(e) }));
-      log('送信結果:', JSON.stringify(j));
+      // log('送信結果:', JSON.stringify(j));
+      
       updateDeliveryUI(true, j);
-      if (j?.errors?.length) { log('エラー例:', j.errors[0].error); }
+      // if (j?.errors?.length) { log('エラー例:', j.errors[0].error); }
+      if (j?.errors?.length) { console.warn('error sample:', j.errors[0].error); }
     } catch (e) {
       log('送信時エラー:', e?.message || e);
     }
