@@ -380,11 +380,11 @@ document.addEventListener('visibilitychange', () => {
 });
 window.addEventListener('pageshow', () => {
   log('[vis] pageshow suppress=', isAutoOpenSuppressed());
-  setTimeout(requestLastOpen, 0));
+  setTimeout(requestLastOpen, 0);
 });
 window.addEventListener('focus', () => {
   log('[vis] focus suppress=', isAutoOpenSuppressed());
-  setTimeout(requestLastOpen, 0));
+  setTimeout(requestLastOpen, 0);
 });
   
 // ===== In-App 表示：ユーティリティ =====
