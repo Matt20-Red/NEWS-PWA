@@ -246,6 +246,7 @@ if (navigator.serviceWorker) {
 
     // 3) 旧E対策の __open（フォールバック経路）
     if (Object.prototype.hasOwnProperty.call(m, '__open')) {
+      if (isAutoOpenSuppressed()) return; // ← 抑止中は /note へ飛ばない
       if (m.__open) {
         try { location.replace(m.__open); } catch {}
       }
@@ -277,6 +278,7 @@ try {
   
 /* 前面化したら SW に「最後のURLある？」と問い合わせ */
 function requestLastOpen() {
+   if (isAutoOpenSuppressed()) return; // ← 抑止中は問い合わせ自体しない
   const ctrl = navigator.serviceWorker && navigator.serviceWorker.controller;
   if (ctrl) {
     try { ctrl.postMessage({ __req_open: true }); } catch {}
@@ -361,6 +363,7 @@ window.addEventListener('focus', () => setTimeout(requestLastIntent, 0));
 function pollLastIntentBriefly() {
   let tries = 0, maxTries = 12;
   (async function loop(){
+    if (isAutoOpenSuppressed()) return; // ← 抑止中は自動回収を止める
     // in-app が既に開いているなら打ち切り
     const inappVisible = document.getElementById('inapp')?.style.display !== 'none';
     if (inappVisible) return;
@@ -375,11 +378,18 @@ function pollLastIntentBriefly() {
 }
 
 document.addEventListener('visibilitychange', () => {
-  if (!document.hidden) pollLastIntentBriefly();
+//  if (!document.hidden) pollLastIntentBriefly();
+if (!document.hidden && !isAutoOpenSuppressed()) { pollLastIntentBriefly(); }
 });
-window.addEventListener('pageshow', () => pollLastIntentBriefly());
-window.addEventListener('focus', () => pollLastIntentBriefly());
-
+window.addEventListener('pageshow', () => {
+  // pollLastIntentBriefly());
+if (!isAutoOpenSuppressed()) { pollLastIntentBriefly(); }
+});
+window.addEventListener('focus', () => {
+  // pollLastIntentBriefly());
+if (!isAutoOpenSuppressed()) { pollLastIntentBriefly(); }
+});
+  
 // 共有コードを入力欄から取得（あなたのUIに合わせて）
 function currentCode() {
   const el = document.getElementById('code');
@@ -389,6 +399,7 @@ function currentCode() {
 function pollInboxBriefly() {
   let tries = 0, max = 8;
   (async function loop(){
+    if (isAutoOpenSuppressed()) return; // ← 抑止中は自動回収を止める
     const code = currentCode();
     if (code) requestInbox(code, { consume: true }); // 最新1件を取りに行く
     tries++;
@@ -397,10 +408,19 @@ function pollInboxBriefly() {
 }
 
 // 既存の前面化フックに “受信箱回収” を足す
-document.addEventListener('visibilitychange', () => { if (!document.hidden) pollInboxBriefly(); });
-window.addEventListener('pageshow', () => pollInboxBriefly());
-window.addEventListener('focus', () => pollInboxBriefly());
-
+document.addEventListener('visibilitychange', () => {
+  // if (!document.hidden) pollInboxBriefly(); 
+  if (!document.hidden && !isAutoOpenSuppressed()) { pollInboxBriefly(); }
+});
+window.addEventListener('pageshow', () => {
+  // pollInboxBriefly());
+  if (!isAutoOpenSuppressed()) { pollInboxBriefly(); }
+});
+window.addEventListener('focus', () => {
+  // pollInboxBriefly());
+  if (!isAutoOpenSuppressed()) { pollInboxBriefly(); }
+});
+  
 // === 受信箱・回収 ===
 function requestInbox(code, { consume = true, ttlMs = 3*60*60*1000 } = {}) {
   const ctrl = navigator.serviceWorker && navigator.serviceWorker.controller;
@@ -419,6 +439,13 @@ function handleInboxData(msg) {
     body: data.body || '',
     url:  data.url || '/'
   });
+}
+
+function suppressAutoOpen(ms = 3000) {
+  try { sessionStorage.setItem('suppressAutoOpenUntil', String(Date.now() + ms)); } catch {}
+}
+function isAutoOpenSuppressed() {
+  try { return Date.now() < (+sessionStorage.getItem('suppressAutoOpenUntil') || 0); } catch { return false; }
 }
   
 </script>
