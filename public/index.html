@@ -181,8 +181,8 @@
       const code = document.getElementById('code').value.trim();
       const message = document.getElementById('message').value;
       // if (!code || !message) return alert('コードとメッセージを入力');
-      if (!code) { log('send stop: code empty'); alert('コードを入力'); return; }
-      if (!message) { log('send stop: message empty'); alert('メッセージを入力'); return; }
+      if (!code) { log('send stop: code empty'); alert('Enter Code'); return; }
+      if (!message) { log('send stop: message empty'); alert('Enter Message'); return; }
       
       const r = await fetch('/api/broadcast', {
         method:'POST',headers:{'Content-Type':'application/json'},
@@ -227,7 +227,7 @@
     const reg = await navigator.serviceWorker.ready;
     let sub = await reg.pushManager.getSubscription();
     if (!sub) {
-      alert('先に購読してください'); return;
+      alert('Please Subscribe'); return;
     }
     const r = await fetch('/api/push-one', {
       method:'POST', headers:{'Content-Type':'application/json'},
@@ -244,7 +244,7 @@
 document.getElementById('btn-apple').onclick = async () => {
   const code = document.getElementById('code').value.trim();
   const message = document.getElementById('message').value || 'apple only';
-  if (!code) return alert('コードを入力');
+  if (!code) return alert('Enter Code');
   const r = await fetch('/api/broadcast-apple', {
     method:'POST', headers:{'Content-Type':'application/json'},
     body: JSON.stringify({ code, message })
@@ -286,12 +286,12 @@ async function renderInbox() {
   const code = currentCode();
   const ul = document.getElementById('inbox-list');
   ul.innerHTML = '';
-  if (!code) { ul.innerHTML = '<li>※ 共有コードを入力してください</li>'; return; }
+  if (!code) { ul.innerHTML = '<li>*Please enter the code</li>'; return; }
 
   log('[inbox] refresh start');
   const items = await readInboxDirect(code);
   if (!items.length) {
-    ul.innerHTML = '<li>（未読なし）</li>';
+    ul.innerHTML = '<li>（No Unread Message）</li>';
     log('[inbox] empty');
     return;
   }
@@ -308,7 +308,7 @@ async function renderInbox() {
 document.getElementById('inbox-refresh')?.addEventListener('click', renderInbox);
 document.getElementById('inbox-pop-latest')?.addEventListener('click', () => {
   const code = currentCode();
-  if (!code) return alert('コードを入力');
+  if (!code) return alert('Enter Code');
   // 最新1件を consume で取得 → showInApp
   const ctrl = navigator.serviceWorker && navigator.serviceWorker.controller;
   if (!ctrl) return;
