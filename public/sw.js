@@ -118,6 +118,7 @@ self.addEventListener('push', (event) => {
       url
     };
     try {
+      /*
       const all = await self.clients.matchAll({ type:'window', includeUncontrolled:true });
       const alive = all.some(c => c.url && new URL(c.url).origin === self.location.origin);
       if (alive) {
@@ -129,6 +130,13 @@ self.addEventListener('push', (event) => {
         const pruned = prune(list, { ttlMs, maxItems });
         await saveInbox(code, pruned);
       }
+      */
+       const ttlMs = 3 * 60 * 60 * 1000, maxItems = 5; // TTL=3h, 最新5件だけ保持
+       const list = await loadInbox(code);
+       list.unshift(item); // 先頭が最新
+       const pruned = prune(list, { ttlMs, maxItems });
+       await saveInbox(code, pruned);
+
     } catch {}
     
     await self.registration.showNotification(title, {
