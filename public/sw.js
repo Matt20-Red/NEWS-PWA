@@ -1,4 +1,8 @@
 // public/sw.js
+
+let __lastOpenUrl = null;
+let __lastOpenTs = 0;
+
 self.addEventListener('install', () => self.skipWaiting());
 self.addEventListener('activate', (e) => e.waitUntil(self.clients.claim()));
 
@@ -41,9 +45,14 @@ self.addEventListener('push', (event) => {
 });
 
 self.addEventListener('notificationclick', (event) => {
+  
   event.notification.close();
   const u = event.notification.data?.url || '/';
   const absUrl = new URL(u, self.location.origin);
+  // absUrl を作った直後あたりで
+  __lastOpenUrl = absUrl.href;
+  __lastOpenTs = Date.now();
+
   try { absUrl.searchParams.set('ts', String(Date.now())); } catch {}
 
   event.waitUntil((async () => {
@@ -73,6 +82,19 @@ self.addEventListener('notificationclick', (event) => {
     try { await new Promise(r => setTimeout(r, 50)); } catch {}
     try { await self.clients.openWindow(absUrl.href); } catch {}
   })());
+});
+
+self.addEventListener('message', (event) => {
+  const msg = event.data || {};
+  if (msg.__req_open) {
+    // 直近のクリック（例：60秒以内）だけ有効にする
+    const fresh = __lastOpenUrl && (Date.now() - __lastOpenTs < 60000);
+    try {
+      event.source && event.source.postMessage(
+        fresh ? { __open: __lastOpenUrl, __ts: __lastOpenTs } : { __open: null }
+      );
+    } catch {}
+  }
 });
 
   
