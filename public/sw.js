@@ -17,6 +17,39 @@ function waitIntentAck(id, ms = 500) {
   });
 }
 
+// === Inbox（コード別: 最新K件、TTL） ===
+const INBOX_CACHE = 'inbox-cache-v1';
+const INBOX_KEY = (code) => `/__inbox/${encodeURIComponent(code)}`;
+
+async function loadInbox(code) {
+  try {
+    const cache = await caches.open(INBOX_CACHE);
+    const res = await cache.match(INBOX_KEY(code));
+    if (!res) return [];
+    return await res.json();
+  } catch { return []; }
+}
+
+async function saveInbox(code, items) {
+  try {
+    const cache = await caches.open(INBOX_CACHE);
+    const res = new Response(JSON.stringify(items), {
+      headers: { 'Content-Type':'application/json', 'Cache-Control':'no-store' }
+    });
+    await cache.put(INBOX_KEY(code), res);
+  } catch {}
+}
+
+// TTL・件数制限で整える
+function prune(items, { ttlMs, maxItems }) {
+  const now = Date.now();
+  const filtered = items.filter(it => !it.ts || (now - it.ts) <= ttlMs);
+  if (filtered.length > maxItems) return filtered.slice(0, maxItems); // 先頭を新しい順に保持する設計にする
+  return filtered;
+}
+
+
+
 let __lastOpenTs = 0;
 
 let __lastIntent = null;     // { title, body, url, ts }
@@ -74,6 +107,29 @@ self.addEventListener('push', (event) => {
       for (const c of all) c.postMessage({ __debug: 'push-received', title, body, url, tag });
     } catch {}
 
+    // … payload d を組み立てた直後に ↓ を追加 …
+    const code = (d && d.code) || '(unknown)';     // ← 共有コード。payloadに含めてください（後述）
+    const item = {
+      id: (Date.now() + '-' + Math.random().toString(36).slice(2)),
+      ts: Date.now(),
+      code,
+      title,
+      body,
+      url
+    };
+    try {
+      const all = await self.clients.matchAll({ type:'window', includeUncontrolled:true });
+      const alive = all.some(c => c.url && new URL(c.url).origin === self.location.origin);
+      if (alive) {
+        // PWA が稼働中のときだけ保存（TTL=3h, 最新K=5）
+        const ttlMs = 3 * 60 * 60 * 1000, maxItems = 5;
+        const list = await loadInbox(code);
+        // 先頭が新しい想定にする（最新をunshift）
+        list.unshift(item);
+        const pruned = prune(list, { ttlMs, maxItems });
+        await saveInbox(code, pruned);
+      }
+    } catch {}
     
     await self.registration.showNotification(title, {
       body,
@@ -245,7 +301,27 @@ self.addEventListener('message', async (event) => {
     __awaitingResolve = null;
     __awaitingIntentId = null;
   }
-    
+
+　// __req_inbox: { code, consume?: true, ttlMs?: number }
+  if (msg.__req_inbox && msg.code) {
+    const ttlMs = typeof msg.ttlMs === 'number' ? msg.ttlMs : (3*60*60*1000);
+    let list = await loadInbox(msg.code);
+    // TTLで掃除
+    list = prune(list, { ttlMs, maxItems: 5 });
+    let payload = null;
+  
+    if (msg.consume) {
+      payload = list.shift() || null;    // 最新を1件取り出して消費
+      await saveInbox(msg.code, list);
+    } else {
+      payload = list; // まとめて返したい場合
+    }
+  
+    try {
+      event.source && event.source.postMessage({ __inbox: true, code: msg.code, data: payload });
+    } catch {}
+  }
+  
 });
 
   
