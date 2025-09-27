@@ -126,6 +126,8 @@ self.addEventListener('notificationclick', (event) => {
     ts: Date.now()
   };
 
+  __lastOpenUrl = absUrl.href; __lastOpenTs = Date.now();
+  
   event.waitUntil((async () => {
     // 1) 短命保存（落ちてもページが拾える）
     await saveIntentEphemeral(intent);
@@ -150,7 +152,8 @@ self.addEventListener('notificationclick', (event) => {
     }
   })());
 });
-  
+
+/*
 self.addEventListener('message', (event) => {
   const msg = event.data || {};
   if (msg.__req_open) {
@@ -173,7 +176,33 @@ self.addEventListener('message', (event) => {
       intent ? { __intent: intent } : { __intent: null }
     );
   } catch {}
-  
+  */
+
+self.addEventListener('message', async (event) => {
+  const msg = event.data || {};
+
+  // 既存: __req_open への応答（そのまま維持）
+  if (msg.__req_open) {
+    const fresh = __lastOpenUrl && (Date.now() - __lastOpenTs < 60000);
+    try {
+      event.source && event.source.postMessage(
+        fresh ? { __open: __lastOpenUrl, __ts: __lastOpenTs } : { __open: null }
+      );
+    } catch {}
+  }
+
+  // 追加: __req_intent の時だけ intent を返す（← ガードが重要）
+  if (msg.__req_intent) {
+    let intent = __lastIntent;
+    if (!intent || (Date.now() - (__lastIntentTs || 0) > 60000)) {
+      intent = await loadIntentEphemeral(60000);
+    }
+    try {
+      event.source && event.source.postMessage(
+        intent ? { __intent: intent } : { __intent: null }
+      );
+    } catch {}
+
 });
 
   
