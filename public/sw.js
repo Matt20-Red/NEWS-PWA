@@ -95,7 +95,7 @@ self.addEventListener('push', (event) => {
       d = { title: '通知', preview: String(event.data || '') };
     }
 
-    const title = (d && d.title && String(d.title).trim()) || '通知';  // ← 空タイトルは避ける
+    const title = (d && d.title && String(d.title).trim()) || 'Bat';  // ← 空タイトルは避ける
     // const body  = (d && d.preview) || '';
     const body  = (d && (d.preview || d.body)) || '';  // ← body も拾う
     const url   = (d && d.url) || '/';
