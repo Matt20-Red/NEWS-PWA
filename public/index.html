@@ -32,6 +32,16 @@
   
 <pre id="log"></pre>
 
+<!-- 受信箱ビュー（コード別の最新K件を直読で描画） -->
+<section id="inbox-section" style="margin-top:12px;">
+  <div class="row" style="align-items:center;">
+    <h2 style="margin:0; font-size:16px;">受信箱（端末内・直近数件）</h2>
+    <button id="inbox-refresh" style="margin-left:auto;">更新</button>
+    <button id="inbox-pop-latest">最新を開く</button>
+  </div>
+  <ul id="inbox-list" style="padding-left:18px; margin-top:8px;"></ul>
+</section>
+  
 <script>
 const log = (...a)=>{ const p=document.getElementById('log'); p.textContent += a.join(' ') + '\n'; }
 
@@ -206,6 +216,86 @@ document.getElementById('btn-apple').onclick = async () => {
 };
   
 })();
+
+// ==== Caches 直読ユーティリティ（受信箱の非同期描画） ====
+// SW と同じキーで読みに行く（読み取り専用）
+const INBOX_CACHE = 'inbox-cache-v1';
+const INBOX_KEY = (code) => '/__inbox/' + encodeURIComponent(code);
+
+// TTL/件数の整形（SWの prune と同等の軽実装）
+function pruneList(items, ttlMs = 3*60*60*1000, maxItems = 5) {
+  const now = Date.now();
+  const a = (Array.isArray(items) ? items : []).filter(it => !it?.ts || (now - it.ts) <= ttlMs);
+  return a.slice(0, maxItems); // 先頭が新しい前提（SW側でunshift保存）
+}
+
+// Caches 直読して一覧を返す（非破壊）
+async function readInboxDirect(code, { ttlMs = 3*60*60*1000, maxItems = 5 } = {}) {
+  try {
+    const cache = await caches.open(INBOX_CACHE);
+    const res = await cache.match(INBOX_KEY(code));
+    if (!res) return [];
+    const list = await res.json();
+    return pruneList(list, ttlMs, maxItems);
+  } catch (e) {
+    log('inbox read error:', e?.message || e); 
+    return [];
+  }
+}
+
+// 受信箱の描画
+async function renderInbox() {
+  const code = currentCode();
+  const ul = document.getElementById('inbox-list');
+  ul.innerHTML = '';
+  if (!code) { ul.innerHTML = '<li>※ 共有コードを入力してください</li>'; return; }
+
+  log('[inbox] refresh start');
+  const items = await readInboxDirect(code);
+  if (!items.length) {
+    ul.innerHTML = '<li>（未読なし）</li>';
+    log('[inbox] empty');
+    return;
+  }
+  for (const it of items) {
+    const li = document.createElement('li');
+    const when = new Date(it.ts || Date.now()).toLocaleString();
+    li.textContent = `${when}: ${it.body || '(no body)'}`;
+    ul.appendChild(li);
+  }
+  log(`[inbox] render ${items.length} item(s)`);
+}
+
+// UIボタン：更新／最新を開く（= 消費して in-app 表示）
+document.getElementById('inbox-refresh')?.addEventListener('click', renderInbox);
+document.getElementById('inbox-pop-latest')?.addEventListener('click', () => {
+  const code = currentCode();
+  if (!code) return alert('コードを入力');
+  // 最新1件を consume で取得 → showInApp
+  const ctrl = navigator.serviceWorker && navigator.serviceWorker.controller;
+  if (!ctrl) return;
+  const onMsg = (e) => {
+    const m = e.data || {};
+    if (m.__inbox && m.code === code) {
+      navigator.serviceWorker.removeEventListener('message', onMsg);
+      if (m.data) {
+        log('[inbox] pop latest -> in-app');
+        showInApp({ title: m.data.title || '通知', body: m.data.body || '', url: m.data.url || '/' });
+        // consume したのでUI再描画
+        renderInbox();
+      } else {
+        log('[inbox] pop latest -> empty');
+        alert('未読はありません');
+      }
+    }
+  };
+  navigator.serviceWorker.addEventListener('message', onMsg);
+  try { ctrl.postMessage({ __req_inbox: true, code, consume: true, ttlMs: 3*60*60*1000 }); } catch {}
+});
+
+// 初回オート描画
+renderInbox();
+
 </script>
 
 
@@ -285,11 +375,18 @@ function requestLastOpen() {
   }
 }
 document.addEventListener('visibilitychange', () => {
+  log('[vis] visibilitychange hidden=', document.hidden, 'suppress=', isAutoOpenSuppressed());
   if (!document.hidden) setTimeout(requestLastOpen, 0);
 });
-window.addEventListener('pageshow', () => setTimeout(requestLastOpen, 0));
-window.addEventListener('focus', () => setTimeout(requestLastOpen, 0));
-
+window.addEventListener('pageshow', () => {
+  log('[vis] pageshow suppress=', isAutoOpenSuppressed());
+  setTimeout(requestLastOpen, 0));
+});
+window.addEventListener('focus', () => {
+  log('[vis] focus suppress=', isAutoOpenSuppressed());
+  setTimeout(requestLastOpen, 0));
+});
+  
 // ===== In-App 表示：ユーティリティ =====
 let __lastHandledTs = 0;
 function showInApp(intent) {
@@ -401,9 +498,13 @@ function currentCode() {
 function pollInboxBriefly() {
   let tries = 0, max = 8;
   (async function loop(){
-    if (isAutoOpenSuppressed()) return; // ← 抑止中は自動回収を止める
+    // if (isAutoOpenSuppressed()) return; // ← 抑止中は自動回収を止める
+    log('[inbox] tick', tries);
     const code = currentCode();
-    if (code) requestInbox(code, { consume: true }); // 最新1件を取りに行く
+    if (code) {
+      log('[inbox] requestInbox consume=false', code);
+      requestInbox(code, { consume: true }); // 最新1件を取りに行く
+    }
     tries++;
     if (tries < max) { await new Promise(r => setTimeout(r, 250)); loop(); }
   })();
@@ -412,15 +513,15 @@ function pollInboxBriefly() {
 // 既存の前面化フックに “受信箱回収” を足す
 document.addEventListener('visibilitychange', () => {
   // if (!document.hidden) pollInboxBriefly(); 
-  if (!document.hidden && !isAutoOpenSuppressed()) { pollInboxBriefly(); }
+  if (!document.hidden) { pollInboxBriefly(); }
 });
 window.addEventListener('pageshow', () => {
   // pollInboxBriefly());
-  if (!isAutoOpenSuppressed()) { pollInboxBriefly(); }
+  { pollInboxBriefly(); }
 });
 window.addEventListener('focus', () => {
   // pollInboxBriefly());
-  if (!isAutoOpenSuppressed()) { pollInboxBriefly(); }
+  { pollInboxBriefly(); }
 });
   
 // === 受信箱・回収 ===
@@ -432,6 +533,7 @@ function requestInbox(code, { consume = true, ttlMs = 3*60*60*1000 } = {}) {
 
 // SWから受け取った受信箱データを in-app で表示
 function handleInboxData(msg) {
+  log('[inbox] handle', !!msg?.data);
   if (!msg || !msg.__inbox) return;
   const data = msg.data;
   if (!data) return; // 未読なし
