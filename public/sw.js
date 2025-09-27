@@ -1,6 +1,22 @@
 // public/sw.js
 
 let __lastOpenUrl = null;
+// クリック多重防止（300ms）
+let __lastClickAt = 0;
+
+// intent ACK 待ち用
+let __awaitingIntentId = null;
+let __awaitingResolve = null;
+function waitIntentAck(id, ms = 500) {
+  __awaitingIntentId = id;
+  return new Promise((resolve) => {
+    __awaitingResolve = resolve;
+    setTimeout(() => {
+      if (__awaitingResolve) { __awaitingResolve(false); __awaitingResolve = null; __awaitingIntentId = null; }
+    }, ms);
+  });
+}
+
 let __lastOpenTs = 0;
 
 let __lastIntent = null;     // { title, body, url, ts }
@@ -115,18 +131,27 @@ self.addEventListener('notificationclick', (event) => {
 //-----------------------（ア）------------------
 
   event.notification.close();
+  // --- 追加: クリック多重防止 ---
+  const now = Date.now();
+  if (now - __lastClickAt < 300) return;
+  __lastClickAt = now;
+  
   const u = event.notification.data?.url || '/';
   const absUrl = new URL(u, self.location.origin);
   try { absUrl.searchParams.set('ts', String(Date.now())); } catch {}
 
+  __lastOpenUrl = absUrl.href; __lastOpenTs = Date.now();
+
+  // ★ intent に一意の id を付与
   const intent = {
+    id: Math.random().toString(36).slice(2),
     title: event.notification.title || '通知',
     body: event.notification.body || '',  // showNotification で渡した body が入る
     url: absUrl.href,
     ts: Date.now()
   };
 
-  __lastOpenUrl = absUrl.href; __lastOpenTs = Date.now();
+  // __lastOpenUrl = absUrl.href; __lastOpenTs = Date.now();
   
   event.waitUntil((async () => {
     // 1) 短命保存（落ちてもページが拾える）
@@ -145,10 +170,18 @@ self.addEventListener('notificationclick', (event) => {
     }
     try { bc && bc.postMessage({ __intent: intent }); } catch {}
 
+    // ★ 既存クライアントがいる想定でも ACK を待つ。来なければ /note へフォールバック
+    let acked = false;
+    if (hasSameOrigin) {
+      try { acked = await waitIntentAck(intent.id, 600); } catch {}
+    }
+    
     // 3) 既存クライアントが無ければ /note.html を開く（フォールバック）
-    if (!hasSameOrigin) {
+    // if (!hasSameOrigin) {
+    if (!hasSameOrigin || !acked) {
+      // 既存なし or 合図ロスト → /note.html を開く（保険）
       try { await self.clients.openWindow(absUrl.href); } catch {}
-      try { await new Promise(r => setTimeout(r, 100)); await self.clients.openWindow(absUrl.href); } catch {}
+      try { await new Promise(r => setTimeout(r, 150)); await self.clients.openWindow(absUrl.href); } catch {}
     }
   })());
 });
@@ -202,6 +235,13 @@ self.addEventListener('message', async (event) => {
         intent ? { __intent: intent } : { __intent: null }
       );
     } catch {}
+  }
+
+  // ★ intent ACK を受け取る
+  if (msg.__intent_ack && msg.id && __awaitingIntentId && msg.id === __awaitingIntentId) {
+    if (__awaitingResolve) { try { __awaitingResolve(true); } catch {} }
+    __awaitingResolve = null;
+    __awaitingIntentId = null;
   }
     
 });
