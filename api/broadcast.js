@@ -49,7 +49,7 @@ export default async function handler(req, res) {
     const url = `/note.html?ts=${Date.now()}&m=${encodeURIComponent(message)}`;
     // const payload = JSON.stringify({ title: '通知', body: message, url });
     // const payload = JSON.stringify({ title: '通知', body: message || '', url });
-    const payload = JSON.stringify({ title: '通知', body: message || '', url, code });
+    const payload = JSON.stringify({ title: Bat — ${code}, body: message || '', url, code });
 
     const subsAll = await list(code);
     const targets = subsAll.filter(s => detectService(s.endpoint) !== 'wns'); // WNSは非対応なので除外
