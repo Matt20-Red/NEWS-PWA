@@ -322,7 +322,7 @@ window.addEventListener('focus', () => setTimeout(requestLastIntent, 0));
 */
 
 function pollLastIntentBriefly() {
-  let tries = 0, maxTries = 8;
+  let tries = 0, maxTries = 12;
   (async function loop(){
     // in-app が既に開いているなら打ち切り
     const inappVisible = document.getElementById('inapp')?.style.display !== 'none';
@@ -331,7 +331,7 @@ function pollLastIntentBriefly() {
     requestLastIntent();
     tries++;
     if (tries < maxTries) {
-      await new Promise(r => setTimeout(r, 200));
+      await new Promise(r => setTimeout(r, 250));
       loop();
     }
   })();
