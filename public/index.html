@@ -317,6 +317,7 @@ function showInApp(intent) {
   document.getElementById('inapp-back').onclick = hide;
 })();
 
+/*
 // ===== 既存SWリスナーに “intent” 受信を追加 =====
 if (navigator.serviceWorker) {
   navigator.serviceWorker.addEventListener('message', (e) => {
@@ -333,7 +334,8 @@ if (navigator.serviceWorker) {
       }
   });
 }
-
+*/
+  
 // ===== BroadcastChannel でも intent を受ける =====
 try {
   const bc = new BroadcastChannel('sw-bridge');
