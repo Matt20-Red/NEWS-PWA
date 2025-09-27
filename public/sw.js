@@ -101,6 +101,7 @@ self.addEventListener('push', (event) => {
     const url   = (d && d.url) || '/';
     const tag   = (d && d.tag) || ('msg-' + Date.now());               // ← 毎回別タグで潰れ防止
 
+    const code = (d && d.code) || '(unknown)';     // ← 共有コード。payloadに含めてください（後述）
     // ★ デバッグ：クライアントへ「push受信したよ」と知らせる
     try {
       const all = await self.clients.matchAll({ includeUncontrolled: true, type: 'window' });
@@ -109,7 +110,6 @@ self.addEventListener('push', (event) => {
     } catch {}
 
     // … payload d を組み立てた直後に ↓ を追加 …
-    const code = (d && d.code) || '(unknown)';     // ← 共有コード。payloadに含めてください（後述）
     const item = {
       id: (Date.now() + '-' + Math.random().toString(36).slice(2)),
       ts: Date.now(),
