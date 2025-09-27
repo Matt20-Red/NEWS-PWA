@@ -220,6 +220,12 @@ if (navigator.serviceWorker) {
     if (m.__open) {
       try { location.href = m.__open; } catch {}
     }
+    // すでにある navigator.serviceWorker.addEventListener('message', ...) の中に追加
+    if (m.__open) {
+      if (m.__open !== null) {
+        // 受け取れたら上書き遷移（履歴汚染回避のため replace 推奨）
+        try { location.replace(m.__open); } catch {}
+    }
   });
 }
 
@@ -233,6 +239,22 @@ try {
     }
   };
 } catch {}
+
+  
+function requestLastOpen() {
+  const ctrl = navigator.serviceWorker && navigator.serviceWorker.controller;
+  if (ctrl) {
+    try { ctrl.postMessage({ __req_open: true }); } catch {}
+  }
+}
+
+// 前面化の各タイミングで問い合わせ
+document.addEventListener('visibilitychange', () => {
+  if (!document.hidden) setTimeout(requestLastOpen, 0);
+});
+window.addEventListener('pageshow', () => setTimeout(requestLastOpen, 0));
+window.addEventListener('focus', () => setTimeout(requestLastOpen, 0));
+
 </script>
 
 </body>
