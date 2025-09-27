@@ -155,7 +155,7 @@ self.addEventListener('push', (event) => {
             c.postMessage({ __debug: 'inbox-saved', code, count: pruned.length });
           }
         }
-      }
+      } catch {}
     } catch {}
     
     await self.registration.showNotification(title, {
