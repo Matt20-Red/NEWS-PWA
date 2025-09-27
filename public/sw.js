@@ -202,7 +202,8 @@ self.addEventListener('message', async (event) => {
         intent ? { __intent: intent } : { __intent: null }
       );
     } catch {}
-
+  }
+    
 });
 
   
