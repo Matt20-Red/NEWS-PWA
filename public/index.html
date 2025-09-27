@@ -251,7 +251,78 @@ document.addEventListener('visibilitychange', () => {
 window.addEventListener('pageshow', () => setTimeout(requestLastOpen, 0));
 window.addEventListener('focus', () => setTimeout(requestLastOpen, 0));
 
+// ===== In-App 表示：ユーティリティ =====
+let __lastHandledTs = 0;
+function showInApp(intent) {
+  try {
+    if (!intent || !intent.body) return;
+    const ts = Number(intent.ts || 0);
+    if (ts && ts <= __lastHandledTs) return; // 同じメッセージの二重処理防止
+    __lastHandledTs = ts || Date.now();
+
+    // 本文反映
+    document.getElementById('inapp-body').textContent = String(intent.body || '');
+
+    // /note.html へ渡す（クエリ化）の補助リンク
+    const url = intent.url || (`/note.html?ts=${Date.now()}&m=${encodeURIComponent(String(intent.body||''))}`);
+    const a = document.getElementById('inapp-open-note');
+    a.href = url;
+
+    // 表示
+    document.getElementById('inapp').style.display = 'block';
+  } catch {}
+}
+(function bindInAppButtons(){
+  const hide = () => { document.getElementById('inapp').style.display = 'none'; };
+  document.getElementById('inapp-close').onclick = hide;
+  document.getElementById('inapp-back').onclick = hide;
+})();
+
+// ===== 既存SWリスナーに “intent” 受信を追加 =====
+if (navigator.serviceWorker) {
+  navigator.serviceWorker.addEventListener('message', (e) => {
+    const m = e.data || {};
+    // 既存：__debug / __open の処理はそのまま
+    if (m.__intent) showInApp(m.__intent);
+  });
+}
+
+// ===== BroadcastChannel でも intent を受ける =====
+try {
+  const bc = new BroadcastChannel('sw-bridge');
+  bc.onmessage = (e) => {
+    const m = e.data || {};
+    if (m.__intent) showInApp(m.__intent);
+  };
+} catch {}
+
+// ===== 前面化で “遅延回収”：SWへ intent 問い合わせ =====
+function requestLastIntent() {
+  const ctrl = navigator.serviceWorker && navigator.serviceWorker.controller;
+  if (ctrl) { try { ctrl.postMessage({ __req_intent: true }); } catch {} }
+}
+// 既存の requestLastOpen() があれば併存OK（上書きしません）
+document.addEventListener('visibilitychange', () => { if (!document.hidden) setTimeout(requestLastIntent, 0); });
+window.addEventListener('pageshow', () => setTimeout(requestLastIntent, 0));
+window.addEventListener('focus', () => setTimeout(requestLastIntent, 0));
+  
 </script>
 
+<!-- In-App メッセージビュー（モーダル） -->
+<div id="inapp" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,.35); z-index:9999;">
+  <div style="background:#fff; max-width:720px; margin:10vh auto; border-radius:12px; box-shadow:0 10px 30px rgba(0,0,0,.2); padding:16px;">
+    <div style="display:flex; align-items:center; justify-content:space-between;">
+      <h2 style="margin:0; font-size:18px;">受信メッセージ</h2>
+      <button id="inapp-close" style="border:none; background:transparent; font-size:18px; cursor:pointer;">✕</button>
+    </div>
+    <pre id="inapp-body" style="white-space:pre-wrap; word-break:break-word; margin-top:12px; background:#f6f6f6; padding:12px; border-radius:8px;"></pre>
+    <div style="margin-top:12px; display:flex; gap:8px;">
+      <!-- 任意：/note.htmlで開きたい人向けのリンク（痕跡は note 側で消える） -->
+      <a id="inapp-open-note" href="#" style="text-decoration:none; padding:8px 12px; border-radius:8px; background:#eee;">/note で開く</a>
+      <button id="inapp-back" style="padding:8px 12px; border-radius:8px; border:1px solid #ddd; background:#fff; cursor:pointer;">戻る</button>
+    </div>
+  </div>
+</div>
+  
 </body>
 </html>
