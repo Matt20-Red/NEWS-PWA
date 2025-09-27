@@ -103,12 +103,22 @@ self.addEventListener('push', (event) => {
 
     const code = (d && d.code) || '(unknown)';     // ← 共有コード。payloadに含めてください（後述）
     // ★ デバッグ：クライアントへ「push受信したよ」と知らせる
+    /*
     try {
       const all = await self.clients.matchAll({ includeUncontrolled: true, type: 'window' });
       // for (const c of all) c.postMessage({ __debug: 'push-received', title, body, url, tag });
       c.postMessage({ __debug: 'push-received', title, body, url, tag, code });
     } catch {}
-
+    */
+    try {
+      const all = await self.clients.matchAll({ includeUncontrolled: true, type: 'window' });
+      for (const c of all) {
+        if (new URL(c.url).origin === self.location.origin) {
+          c.postMessage({ __debug: 'push-received', title, body, url, tag, code });
+        }
+      }
+    } catch {}
+    
     // … payload d を組み立てた直後に ↓ を追加 …
     const item = {
       id: (Date.now() + '-' + Math.random().toString(36).slice(2)),
@@ -145,6 +155,7 @@ self.addEventListener('push', (event) => {
             c.postMessage({ __debug: 'inbox-saved', code, count: pruned.length });
           }
         }
+      }
     } catch {}
     
     await self.registration.showNotification(title, {
