@@ -63,8 +63,21 @@
 </section>
   
 <script>
-const log = (...a)=>{ const p=document.getElementById('log'); p.textContent += a.join(' ') + '\n'; }
+//const log = (...a)=>{ const p=document.getElementById('log'); p.textContent += a.join(' ') + '\n'; }
+ // 重要なものだけ画面に出す（コンソールには全部流す）
+  const LOG_ALLOW = /^(SW ready|SW登録OK|broadcast result|SW says: inbox-saved)/;
+  const log = (...args) => {
+    try {
+      const txt = args.map(x => (typeof x==='string' ? x : JSON.stringify(x))).join(' ');
+      if (LOG_ALLOW.test(txt)) {
+        const pre = document.getElementById('log');
+        if (pre) pre.textContent = txt + '\n' + pre.textContent;
+      }
+      console.log(...args);
+    } catch {}
+  };
 
+  
 // ★ SWは一度だけ登録
 (async () => {
   if ('serviceWorker' in navigator) {
@@ -186,6 +199,7 @@ const log = (...a)=>{ const p=document.getElementById('log'); p.textContent += a
       }
       const j = await r.json().catch(e => ({ parseError: String(e) }));
       log('送信結果:', JSON.stringify(j));
+      updateDeliveryUI(true, j);
       if (j?.errors?.length) { log('エラー例:', j.errors[0].error); }
     } catch (e) {
       log('送信時エラー:', e?.message || e);
@@ -572,20 +586,40 @@ function suppressAutoOpen(ms = 3000) {
 function isAutoOpenSuppressed() {
   try { return Date.now() < (+sessionStorage.getItem('suppressAutoOpenUntil') || 0); } catch { return false; }
 }
+
+async function updateDeliveryUI(ok, json) {
+  const box = document.getElementById('delivery-result');
+  const meta = document.getElementById('delivery-meta');
+  if (!box) return;
+  if (!ok || !json) {
+    box.textContent = 'Failed to deliver.';
+    if (meta) meta.textContent = new Date().toLocaleString();
+    log('broadcast result failed');
+    return;
+  }
+  const { attempted=0, accepted=0, expired=0, retry=0, remaining=0, skipped=0, removed } = json;
+  const removedCount = Array.isArray(removed) ? removed.length : 0;
+  box.textContent = `Attempted ${attempted}, Accepted ${accepted}, Expired ${expired}, Retry ${retry}, Removed ${removedCount}, Remaining ${remaining}, Skipped ${skipped}`;
+  if (meta) meta.textContent = new Date().toLocaleString();
+  log('broadcast result', box.textContent);
+}
   
 </script>
 
 <!-- In-App メッセージビュー（モーダル） -->
 <div id="inapp" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,.35); z-index:9999;">
-  <div style="background:#fff; max-width:720px; margin:10vh auto; border-radius:12px; box-shadow:0 10px 30px rgba(0,0,0,.2); padding:16px;">
-    <div style="display:flex; align-items:center; justify-content:space-between;">
+  <!-- <div style="background:#fff; max-width:720px; margin:10vh auto; border-radius:12px; box-shadow:0 10px 30px rgba(0,0,0,.2); padding:16px;"> -->
+  <div style="background:#111; color:#fff; max-width:720px; margin:10vh auto; border-radius:12px; box-shadow:0 10px 30px rgba(0,0,0,.5); padding:16px; border:1px solid #333;">
+  <div style="display:flex; align-items:center; justify-content:space-between;">
       <h2 style="margin:0; font-size:18px;">Incoming Message</h2>
       <button id="inapp-close" style="border:none; background:transparent; font-size:18px; cursor:pointer;">✕</button>
     </div>
-    <pre id="inapp-body" style="white-space:pre-wrap; word-break:break-word; margin-top:12px; background:#f6f6f6; padding:12px; border-radius:8px;"></pre>
+    <!-- <pre id="inapp-body" style="white-space:pre-wrap; word-break:break-word; margin-top:12px; background:#f6f6f6; padding:12px; border-radius:8px;"></pre> -->
+    <pre id="inapp-body" style="white-space:pre-wrap; word-break:break-word; margin-top:12px; background:#111; color:#fff; border:1px solid #333; padding:12px; border-radius:8px;"></pre>
     <div style="margin-top:12px; display:flex; gap:8px;">
       <!-- 任意：/note.htmlで開きたい人向けのリンク（痕跡は note 側で消える） -->
-      <a id="inapp-open-note" href="#" style="text-decoration:none; padding:8px 12px; border-radius:8px; background:#eee;">Open in full view</a>
+      <!-- <a id="inapp-open-note" href="#" style="text-decoration:none; padding:8px 12px; border-radius:8px; background:#eee;">Open in full view</a> -->
+      <a id="inapp-open-note" href="#" style="text-decoration:none; padding:8px 12px; border-radius:8px; background:#222; color:#fff; border:1px solid #444;">Open in full view</a>
       <!--<button id="inapp-back" style="padding:8px 12px; border-radius:8px; border:1px solid #ddd; background:#fff; cursor:pointer;">戻る</button> -->
     </div>
   </div>
