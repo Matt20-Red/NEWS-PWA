@@ -104,7 +104,8 @@ self.addEventListener('push', (event) => {
     // ★ デバッグ：クライアントへ「push受信したよ」と知らせる
     try {
       const all = await self.clients.matchAll({ includeUncontrolled: true, type: 'window' });
-      for (const c of all) c.postMessage({ __debug: 'push-received', title, body, url, tag });
+      // for (const c of all) c.postMessage({ __debug: 'push-received', title, body, url, tag });
+      c.postMessage({ __debug: 'push-received', title, body, url, tag, code });
     } catch {}
 
     // … payload d を組み立てた直後に ↓ を追加 …
@@ -136,7 +137,14 @@ self.addEventListener('push', (event) => {
        list.unshift(item); // 先頭が最新
        const pruned = prune(list, { ttlMs, maxItems });
        await saveInbox(code, pruned);
-
+       // …保存処理のすぐ後ろに追記（★これを入れる）
+      try {
+        const allClients = await self.clients.matchAll({ includeUncontrolled: true, type: 'window' });
+        for (const c of allClients) {
+          if (new URL(c.url).origin === self.location.origin) {
+            c.postMessage({ __debug: 'inbox-saved', code, count: pruned.length });
+          }
+        }
     } catch {}
     
     await self.registration.showNotification(title, {
